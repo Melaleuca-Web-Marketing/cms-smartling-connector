@@ -1,19 +1,15 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   createSmartlingJob,
   downloadPublishedTranslations,
   getSmartlingRuntimeStatus
 } from "./smartlingAdapter.mjs";
+import { getStoreInfo, loadStore, saveStore } from "./store.mjs";
 
 const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
 const HOST = env.HOST || "127.0.0.1";
-const STORE_FILE =
-  env.STORE_FILE || fileURLToPath(new URL("./data/store.json", import.meta.url));
 
 const FIELD_CONFIG = {
   productName: {
@@ -109,12 +105,6 @@ const ROUTES = [
   }
 ];
 
-const EMPTY_STORE = {
-  requests: [],
-  translations: [],
-  events: []
-};
-
 function nowIso() {
   return new Date().toISOString();
 }
@@ -167,32 +157,6 @@ async function readJsonBody(req) {
   }
 
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-}
-
-async function loadStore() {
-  try {
-    const raw = stripBom(await readFile(STORE_FILE, "utf8"));
-    const parsed = JSON.parse(raw);
-    return {
-      requests: Array.isArray(parsed.requests) ? parsed.requests : [],
-      translations: Array.isArray(parsed.translations) ? parsed.translations : [],
-      events: Array.isArray(parsed.events) ? parsed.events : []
-    };
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-    return structuredClone(EMPTY_STORE);
-  }
-}
-
-function stripBom(value) {
-  return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
-}
-
-async function saveStore(store) {
-  await mkdir(dirname(STORE_FILE), { recursive: true });
-  await writeFile(STORE_FILE, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
 
 function normalizeLabel(label) {
@@ -781,6 +745,7 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, {
         ok: true,
         service: "cms-smartling-connector",
+        store: getStoreInfo(),
         time: nowIso()
       });
     }

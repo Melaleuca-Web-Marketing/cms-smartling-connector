@@ -42,11 +42,13 @@ Health check:
 GET /health
 ```
 
-Stored data lives at:
+Stored data lives in a local SQLite database:
 
 ```text
-backend/data/store.json
+backend/data/store.sqlite
 ```
+
+If `backend/data/store.json` exists from an earlier MVP build and the SQLite database is empty, the backend imports the JSON file into SQLite on first startup. Runtime data files under `backend/data` are ignored by Git.
 
 ## Build Browser Extensions
 
