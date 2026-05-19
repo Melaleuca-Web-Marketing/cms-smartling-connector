@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "CMS Smartling Assistant",
+  "description": "Stages Smartling product-copy requests and inserts returned translations into CMS fields.",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "host_permissions": [
+    "http://localhost:17817/*",
+    "http://127.0.0.1:17817/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["smartling_logo.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_title": "CMS Smartling Assistant",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cms-smartling-connector@melaleuca-web-marketing",
+      "strict_min_version": "109.0"
+    }
+  }
+}

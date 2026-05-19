@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:extension": "node scripts/build-extension.mjs all",
+    "build:chromium": "node scripts/build-extension.mjs chromium",
+    "build:firefox": "node scripts/build-extension.mjs firefox",
     "backend": "node --env-file=.env backend/server.mjs",
-    "check": "node --check backend/server.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js"
+    "check": "node --check backend/server.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js && node --check scripts/build-extension.mjs"
   }
 }

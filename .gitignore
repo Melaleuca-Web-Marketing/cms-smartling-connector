@@ -1,4 +1,5 @@
 /.env
+/dist/
 backend/data/*.json
 backend/data/*.log
 backend/data/*.err.log

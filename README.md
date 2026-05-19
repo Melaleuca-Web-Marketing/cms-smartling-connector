@@ -48,17 +48,50 @@ Stored data lives at:
 backend/data/store.json
 ```
 
-## Load Extension
+## Build Browser Extensions
 
-1. Open `chrome://extensions` or `edge://extensions`.
+Generate loadable extension folders from the shared source files:
+
+```powershell
+npm run build:chromium
+npm run build:firefox
+```
+
+Or build both:
+
+```powershell
+npm run build:extension
+```
+
+The build output is ignored by Git:
+
+```text
+dist/chromium
+dist/firefox
+```
+
+## Load Chrome or Edge Extension
+
+1. Run `npm run build:chromium`.
+2. Open `chrome://extensions` or `edge://extensions`.
 2. Enable developer mode.
-3. Load the unpacked extension from the `extension` folder.
+3. Load the unpacked extension from `dist/chromium`.
 4. Open the CMS product page.
 5. Use the extension popup if the backend URL needs to change.
 
+## Load Firefox Extension
+
+1. Run `npm run build:firefox`.
+2. Open `about:debugging#/runtime/this-firefox`.
+3. Choose `Load Temporary Add-on`.
+4. Select `dist/firefox/manifest.json`.
+5. Open the CMS product page.
+
+Firefox Manifest V3 host permissions are user-controlled. If the panel does not appear on the CMS page, open Firefox's extensions button and grant the assistant access to the current site.
+
 The extension starts collapsed as a circular Smartling logo button in the lower-right corner. Open it to use the workflow panel. The panel header includes a dark/light theme toggle and a collapse control.
 
-For production, narrow the `content_scripts.matches` value in `extension/manifest.json` to the CMS origin.
+For production, narrow the `content_scripts.matches` value in `extension/manifest.json` and `extension/manifest.firefox.json` to the CMS origin.
 
 ## Test Without Smartling
 
