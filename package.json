@@ -1,0 +1,10 @@
+{
+  "name": "cms-smartling-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "backend": "node --env-file=.env backend/server.mjs",
+    "check": "node --check backend/server.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js"
+  }
+}

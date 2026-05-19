@@ -1,0 +1,5 @@
+/.env
+backend/data/*.json
+backend/data/*.log
+backend/data/*.err.log
+!backend/data/.gitkeep

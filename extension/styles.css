@@ -1,0 +1,1036 @@
+#cms-smartling-panel {
+  --sl-bg: #ffffff;
+  --sl-surface: #f7fafc;
+  --sl-surface-strong: #eef5fb;
+  --sl-text: #172033;
+  --sl-muted: #64748b;
+  --sl-border: #d7e1eb;
+  --sl-border-strong: #b8c8d8;
+  --sl-brand: #0878d7;
+  --sl-brand-hover: #0566b8;
+  --sl-brand-soft: #eaf5ff;
+  --sl-danger: #b42318;
+  --sl-ring: rgba(8, 120, 215, 0.18);
+  --sl-shadow: 0 18px 52px rgba(15, 23, 42, 0.24);
+  --sl-font: "Segoe UI", Arial, Helvetica, sans-serif;
+
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  width: min(380px, calc(100vw - 36px));
+  color: var(--sl-text);
+  font-family: var(--sl-font);
+  font-size: 13px;
+}
+
+#cms-smartling-panel[data-theme="dark"] {
+  --sl-bg: #121821;
+  --sl-surface: #182232;
+  --sl-surface-strong: #202d40;
+  --sl-text: #edf4fb;
+  --sl-muted: #aab7c6;
+  --sl-border: #2c3a4d;
+  --sl-border-strong: #496074;
+  --sl-brand: #43a7ff;
+  --sl-brand-hover: #73bdff;
+  --sl-brand-soft: #15304a;
+  --sl-danger: #ff9b92;
+  --sl-ring: rgba(67, 167, 255, 0.28);
+  --sl-shadow: 0 20px 60px rgba(0, 0, 0, 0.46);
+}
+
+#cms-smartling-panel,
+#cms-smartling-panel * {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+#cms-smartling-panel.is-collapsed {
+  width: 58px;
+}
+
+#cms-smartling-panel .cms-smartling-card {
+  overflow: hidden;
+  border: 1px solid var(--sl-border);
+  border-radius: 14px;
+  background: var(--sl-bg);
+  box-shadow: var(--sl-shadow);
+}
+
+#cms-smartling-panel.is-collapsed .cms-smartling-card {
+  display: none;
+}
+
+#cms-smartling-panel .cms-smartling-launcher {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid #d7e1eb;
+  border-radius: 50%;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: var(--sl-shadow);
+  cursor: pointer;
+}
+
+#cms-smartling-panel.is-collapsed .cms-smartling-launcher {
+  display: inline-flex;
+}
+
+#cms-smartling-panel .cms-smartling-launcher:hover {
+  border-color: #b8c8d8;
+  transform: translateY(-1px);
+}
+
+#cms-smartling-panel .cms-smartling-logo {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+#cms-smartling-panel .cms-smartling-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  border-bottom: 1px solid #c9d7e4;
+  padding: 9px 12px 9px 14px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-title {
+  border-bottom-color: var(--sl-border);
+  background:
+    linear-gradient(180deg, rgba(67, 167, 255, 0.14), transparent),
+    var(--sl-surface);
+  color: var(--sl-text);
+}
+
+#cms-smartling-panel .cms-smartling-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  color: #0f172a !important;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: none;
+}
+
+#cms-smartling-panel .cms-smartling-brand span {
+  color: #0f172a !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #0f172a;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-brand {
+  color: var(--sl-text) !important;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-brand span {
+  color: var(--sl-text) !important;
+  -webkit-text-fill-color: var(--sl-text);
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-header-logo {
+  border-color: var(--sl-border);
+  background: #ffffff;
+}
+
+#cms-smartling-panel .cms-smartling-header-logo {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d7e1eb;
+  border-radius: 8px;
+  padding: 3px;
+  background: #ffffff;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.18));
+}
+
+#cms-smartling-panel .cms-smartling-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#cms-smartling-panel .cms-smartling-icon-button {
+  position: relative;
+  flex: 0 0 auto;
+  border: 1px solid var(--sl-border);
+  background: var(--sl-bg);
+  color: var(--sl-text);
+  cursor: pointer;
+}
+
+#cms-smartling-panel .cms-smartling-theme-toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  padding: 0;
+}
+
+#cms-smartling-panel .cms-smartling-theme-toggle::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sl-brand);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.28);
+  transition: transform 140ms ease;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-theme-toggle::before {
+  transform: translateX(18px);
+}
+
+#cms-smartling-panel .cms-smartling-collapse {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+#cms-smartling-panel .cms-smartling-collapse::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 13px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--sl-muted);
+}
+
+#cms-smartling-panel .cms-smartling-icon-button:hover {
+  border-color: var(--sl-border-strong);
+  background: var(--sl-surface-strong);
+}
+
+#cms-smartling-panel .cms-smartling-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+#cms-smartling-panel .cms-smartling-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--sl-muted);
+  font-size: 12px;
+}
+
+#cms-smartling-panel .cms-smartling-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid var(--sl-border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--sl-surface);
+  color: var(--sl-muted);
+}
+
+#cms-smartling-panel .cms-smartling-meta {
+  color: var(--sl-muted);
+  font-size: 12px;
+}
+
+#cms-smartling-panel .cms-smartling-form-row {
+  display: grid;
+  gap: 6px;
+}
+
+#cms-smartling-panel .cms-smartling-targets {
+  display: grid;
+  gap: 7px;
+}
+
+#cms-smartling-panel .cms-smartling-section-label {
+  color: var(--sl-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+#cms-smartling-panel .cms-smartling-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #0f172a !important;
+  font-size: 12px;
+  font-weight: 750;
+  opacity: 1 !important;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-section-header {
+  color: var(--sl-text) !important;
+}
+
+#cms-smartling-panel .cms-smartling-text-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--sl-brand);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#cms-smartling-panel .cms-smartling-text-button:hover {
+  color: var(--sl-brand-hover);
+  text-decoration: underline;
+}
+
+#cms-smartling-panel .cms-smartling-disclosure {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #0f172a !important;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 1 !important;
+  text-align: left;
+  -webkit-text-fill-color: #0f172a;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-disclosure {
+  color: var(--sl-text) !important;
+  -webkit-text-fill-color: var(--sl-text);
+}
+
+#cms-smartling-panel .cms-smartling-disclosure-icon {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  border-radius: 5px;
+  background: var(--sl-brand-soft);
+}
+
+#cms-smartling-panel .cms-smartling-disclosure-icon::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  width: 5px;
+  height: 5px;
+  border-right: 2px solid var(--sl-brand);
+  border-bottom: 2px solid var(--sl-brand);
+  transform: rotate(-45deg);
+}
+
+#cms-smartling-panel .cms-smartling-disclosure[aria-expanded="true"] .cms-smartling-disclosure-icon::before {
+  left: 5px;
+  top: 3px;
+  transform: rotate(45deg);
+}
+
+#cms-smartling-panel .cms-smartling-recent {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid var(--sl-border);
+  padding-top: 10px;
+}
+
+#cms-smartling-panel .cms-smartling-recent-empty {
+  border: 1px dashed var(--sl-border);
+  border-radius: 9px;
+  padding: 9px 10px;
+  background: var(--sl-surface);
+  color: var(--sl-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#cms-smartling-panel .cms-smartling-request-list {
+  display: grid;
+  gap: 7px;
+}
+
+#cms-smartling-panel .cms-smartling-request-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--sl-border);
+  border-radius: 9px;
+  padding: 9px 10px;
+  background: var(--sl-surface);
+}
+
+#cms-smartling-panel .cms-smartling-request-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--sl-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+#cms-smartling-panel .cms-smartling-request-locale {
+  color: #334155 !important;
+  font-size: 12px;
+  font-weight: 750;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #334155;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-locale {
+  color: var(--sl-muted) !important;
+  -webkit-text-fill-color: var(--sl-muted);
+}
+
+#cms-smartling-panel .cms-smartling-request-name {
+  overflow: hidden;
+  color: var(--sl-text);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cms-smartling-panel .cms-smartling-request-meta {
+  color: var(--sl-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback {
+  border: 1px solid var(--sl-border);
+  border-radius: 7px;
+  padding: 6px 8px;
+  background: var(--sl-bg);
+  color: var(--sl-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 1 !important;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback-message {
+  min-width: 0;
+  color: #334155 !important;
+  font-weight: 700;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #334155;
+}
+
+#cms-smartling-panel .cms-smartling-request-progress-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  min-height: 22px;
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f172a !important;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 1 !important;
+  text-shadow: none;
+  -webkit-text-fill-color: #0f172a;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-info .cms-smartling-request-progress-badge {
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-success .cms-smartling-request-progress-badge {
+  color: #166534 !important;
+  -webkit-text-fill-color: #166534;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-error .cms-smartling-request-progress-badge {
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b;
+}
+
+#cms-smartling-panel .cms-smartling-request-field-progress {
+  display: grid;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-pill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid var(--sl-border);
+  border-radius: 7px;
+  padding: 4px 7px;
+  background: rgba(255, 255, 255, 0.66);
+  color: #334155 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #334155;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-name {
+  min-width: 0;
+  overflow: hidden;
+  color: currentColor !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-text-fill-color: currentColor;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-state {
+  color: currentColor !important;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  -webkit-text-fill-color: currentColor;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-pill.is-pending {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-pill.is-progress {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af !important;
+  -webkit-text-fill-color: #1e40af;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-pill.is-ready {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534 !important;
+  -webkit-text-fill-color: #166534;
+}
+
+#cms-smartling-panel .cms-smartling-field-progress-pill.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-info .cms-smartling-request-feedback-message {
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534 !important;
+  -webkit-text-fill-color: #166534;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-success .cms-smartling-request-feedback-message {
+  color: #14532d !important;
+  -webkit-text-fill-color: #14532d;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b;
+}
+
+#cms-smartling-panel .cms-smartling-request-feedback.is-error .cms-smartling-request-feedback-message {
+  color: #991b1b !important;
+  -webkit-text-fill-color: #991b1b;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.12);
+  color: #bfdbfe !important;
+  -webkit-text-fill-color: #bfdbfe;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info .cms-smartling-request-feedback-message {
+  color: #dbeafe !important;
+  -webkit-text-fill-color: #dbeafe;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-progress-badge {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-pending {
+  border-color: rgba(148, 163, 184, 0.34);
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1 !important;
+  -webkit-text-fill-color: #cbd5e1;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-progress {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.12);
+  color: #dbeafe !important;
+  -webkit-text-fill-color: #dbeafe;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-ready {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: #dcfce7 !important;
+  -webkit-text-fill-color: #dcfce7;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-error {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fee2e2 !important;
+  -webkit-text-fill-color: #fee2e2;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info .cms-smartling-request-progress-badge {
+  color: #dbeafe !important;
+  -webkit-text-fill-color: #dbeafe;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: #bbf7d0 !important;
+  -webkit-text-fill-color: #bbf7d0;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success .cms-smartling-request-feedback-message {
+  color: #dcfce7 !important;
+  -webkit-text-fill-color: #dcfce7;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success .cms-smartling-request-progress-badge {
+  color: #dcfce7 !important;
+  -webkit-text-fill-color: #dcfce7;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca !important;
+  -webkit-text-fill-color: #fecaca;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error .cms-smartling-request-feedback-message {
+  color: #fee2e2 !important;
+  -webkit-text-fill-color: #fee2e2;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error .cms-smartling-request-progress-badge {
+  color: #fee2e2 !important;
+  -webkit-text-fill-color: #fee2e2;
+}
+
+#cms-smartling-panel .cms-smartling-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+#cms-smartling-panel .cms-smartling-small-button {
+  min-height: 28px;
+  border: 1px solid var(--sl-brand);
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: var(--sl-bg);
+  color: var(--sl-brand);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+#cms-smartling-panel .cms-smartling-small-button:hover {
+  background: var(--sl-brand-soft);
+}
+
+#cms-smartling-panel .cms-smartling-small-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+#cms-smartling-panel .cms-smartling-request-hint {
+  color: var(--sl-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--sl-surface-strong);
+  color: var(--sl-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill.is-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill.is-ready {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill.is-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill.is-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+#cms-smartling-panel .cms-smartling-status-pill.is-muted {
+  background: var(--sl-surface-strong);
+  color: var(--sl-muted);
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-success {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-ready {
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-error {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-warning {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fcd34d;
+}
+
+#cms-smartling-panel .cms-smartling-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+#cms-smartling-panel .cms-smartling-target-option {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: 34px;
+  border: 1px solid var(--sl-border);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: var(--sl-surface);
+  color: #334155 !important;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 1 !important;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-target-option {
+  color: var(--sl-muted) !important;
+}
+
+#cms-smartling-panel .cms-smartling-target-option:hover {
+  border-color: var(--sl-border-strong);
+  background: var(--sl-surface-strong);
+}
+
+#cms-smartling-panel .cms-smartling-target-option input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--sl-brand);
+}
+
+#cms-smartling-panel .cms-smartling-target-option span {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155 !important;
+  opacity: 1 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-text-fill-color: #334155;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-target-option span {
+  color: var(--sl-muted) !important;
+  -webkit-text-fill-color: var(--sl-muted);
+}
+
+#cms-smartling-panel .cms-smartling-label {
+  display: block;
+  margin: 0;
+  color: var(--sl-text) !important;
+  font-size: 12px;
+  font-weight: 750;
+  opacity: 1 !important;
+}
+
+#cms-smartling-panel .cms-smartling-input {
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--sl-bg);
+  color: var(--sl-text);
+  font: inherit;
+  line-height: 1.35;
+  outline: none;
+}
+
+#cms-smartling-panel .cms-smartling-input:focus {
+  border-color: var(--sl-brand);
+  box-shadow: 0 0 0 3px var(--sl-ring);
+}
+
+#cms-smartling-panel .cms-smartling-checkrow,
+#cms-smartling-panel .cms-smartling-field-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--sl-text) !important;
+  font-size: 12px;
+  opacity: 1 !important;
+}
+
+#cms-smartling-panel .cms-smartling-checkrow {
+  min-height: 24px;
+  align-items: center;
+}
+
+#cms-smartling-panel .cms-smartling-checkrow span {
+  color: var(--sl-muted);
+  line-height: 1.35;
+}
+
+#cms-smartling-panel .cms-smartling-checkrow input,
+#cms-smartling-panel .cms-smartling-field-option input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--sl-brand);
+}
+
+#cms-smartling-panel .cms-smartling-field-list {
+  display: grid;
+  gap: 9px;
+}
+
+#cms-smartling-panel .cms-smartling-field-option {
+  min-width: 0;
+  border: 1px solid var(--sl-border);
+  border-radius: 10px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent),
+    var(--sl-surface);
+  cursor: pointer;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-option {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    var(--sl-surface);
+}
+
+#cms-smartling-panel .cms-smartling-field-option:hover {
+  border-color: var(--sl-border-strong);
+  background: var(--sl-surface-strong);
+}
+
+#cms-smartling-panel .cms-smartling-field-option:has(input:disabled) {
+  cursor: default;
+}
+
+#cms-smartling-panel .cms-smartling-field-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+#cms-smartling-panel .cms-smartling-field-name {
+  color: var(--sl-text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+#cms-smartling-panel .cms-smartling-field-value {
+  max-height: 92px;
+  overflow: auto;
+  color: var(--sl-text);
+  font-size: 12px;
+  line-height: 1.42;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#cms-smartling-panel .cms-smartling-empty {
+  color: var(--sl-muted);
+  font-style: italic;
+}
+
+#cms-smartling-panel .cms-smartling-status,
+#cms-smartling-panel .cms-smartling-note {
+  color: var(--sl-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+#cms-smartling-panel .cms-smartling-diagnostics {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 0;
+  color: var(--sl-muted);
+  font-size: 12px;
+}
+
+#cms-smartling-panel .cms-smartling-diagnostics div {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+}
+
+#cms-smartling-panel .cms-smartling-diagnostics dt,
+#cms-smartling-panel .cms-smartling-diagnostics dd {
+  margin: 0;
+}
+
+#cms-smartling-panel .cms-smartling-diagnostics dt {
+  color: var(--sl-text);
+  font-weight: 750;
+}
+
+#cms-smartling-panel .cms-smartling-error {
+  color: var(--sl-danger);
+}
+
+#cms-smartling-panel .cms-smartling-primary,
+#cms-smartling-panel .cms-smartling-secondary,
+#cms-smartling-panel .cms-smartling-insert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--sl-brand);
+  border-radius: 8px;
+  padding: 8px 13px;
+  background: var(--sl-brand);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(8, 120, 215, 0.2);
+}
+
+#cms-smartling-panel .cms-smartling-secondary {
+  background: var(--sl-bg);
+  color: var(--sl-brand);
+  box-shadow: none;
+}
+
+#cms-smartling-panel .cms-smartling-primary:hover,
+#cms-smartling-panel .cms-smartling-insert:hover {
+  border-color: var(--sl-brand-hover);
+  background: var(--sl-brand-hover);
+}
+
+#cms-smartling-panel .cms-smartling-secondary:hover {
+  background: var(--sl-brand-soft);
+}
+
+.cms-smartling-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #b7d7f3;
+  border-radius: 8px;
+  background: #f4f9ff;
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+.cms-smartling-preview {
+  min-width: 0;
+  color: #172033;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cms-smartling-insert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid #0878d7;
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: #0878d7;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cms-smartling-insert:hover {
+  background: #0566b8;
+  border-color: #0566b8;
+}
