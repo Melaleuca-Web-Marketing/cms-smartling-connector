@@ -107,7 +107,6 @@ async function checkSmartlingConfig() {
 function resetPanelState() {
   chrome.storage.local.set(
     {
-      smartlingPanelCollapsed: true,
       smartlingPanelTheme: "light",
       smartlingRecentRequestsCollapsed: true
     },

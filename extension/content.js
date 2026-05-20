@@ -71,6 +71,7 @@ let ignoreMutationsUntil = 0;
 let panelCollapsed = true;
 let panelTheme = "light";
 let recentRequestsCollapsed = true;
+let activePanelSku = null;
 let recentRequestsState = {
   sku: null,
   requests: [],
@@ -83,7 +84,7 @@ init();
 async function init() {
   const settings = await getExtensionSettings();
   apiBaseUrl = settings.apiBaseUrl;
-  panelCollapsed = settings.panelCollapsed;
+  panelCollapsed = true;
   panelTheme = settings.panelTheme;
   recentRequestsCollapsed = settings.recentRequestsCollapsed;
   scheduleScan();
@@ -105,7 +106,6 @@ function getExtensionSettings() {
     if (!globalThis.chrome?.storage?.local) {
       resolve({
         apiBaseUrl: DEFAULT_API_BASE_URL,
-        panelCollapsed: true,
         panelTheme: "light",
         recentRequestsCollapsed: true
       });
@@ -115,14 +115,12 @@ function getExtensionSettings() {
     chrome.storage.local.get(
       {
         apiBaseUrl: DEFAULT_API_BASE_URL,
-        smartlingPanelCollapsed: true,
         smartlingPanelTheme: "light",
         smartlingRecentRequestsCollapsed: true
       },
       (items) => {
         resolve({
           apiBaseUrl: items.apiBaseUrl || DEFAULT_API_BASE_URL,
-          panelCollapsed: items.smartlingPanelCollapsed !== false,
           panelTheme: items.smartlingPanelTheme === "dark" ? "dark" : "light",
           recentRequestsCollapsed: items.smartlingRecentRequestsCollapsed !== false
         });
@@ -153,6 +151,11 @@ async function scanPage() {
     context,
     fields
   };
+
+  if (context.sku && context.sku !== activePanelSku) {
+    activePanelSku = context.sku;
+    panelCollapsed = true;
+  }
 
   ignoreCmsMutations(() => {
     ensurePanel();
@@ -379,7 +382,6 @@ function removePanel() {
 function setPanelCollapsed(collapsed) {
   panelCollapsed = collapsed;
   applyPanelShellState();
-  savePanelSetting({ smartlingPanelCollapsed: panelCollapsed });
 }
 
 function togglePanelTheme() {
