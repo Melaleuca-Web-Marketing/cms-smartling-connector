@@ -52,7 +52,7 @@ If `backend/data/store.json` exists from an earlier MVP build and the SQLite dat
 
 ## Build Browser Extensions
 
-Generate loadable extension folders from the shared source files:
+Generate loadable extension folders and refresh the landing page ZIP downloads from the shared source files:
 
 ```powershell
 npm run build:chromium
@@ -77,16 +77,19 @@ The build output is ignored by Git:
 dist/chromium
 dist/firefox
 dist/packages
+docs/downloads/*.zip
 ```
 
-The package script creates:
+The build/package scripts create:
 
 ```text
 dist/packages/cms-smartling-connector-chromium.zip
 dist/packages/cms-smartling-connector-firefox.zip
+docs/downloads/cms-smartling-connector-chromium.zip
+docs/downloads/cms-smartling-connector-firefox.zip
 ```
 
-These ZIPs can be copied to the internal web server so the static landing page can link to the latest downloads.
+The `docs/downloads` copies are what the landing page links to. If the internal server serves the `docs` folder, run `npm run build:extension` during deployment so the downloadable ZIPs are regenerated before users access the page.
 
 ## Download Landing Page
 
@@ -107,9 +110,9 @@ This should be copied to an internal static site or web server.
 
 Internal server release flow:
 
-1. Run `npm run package:extension`.
+1. Run `npm run build:extension`.
 2. Copy `docs/index.html`, `docs/styles.css`, and `docs/assets/smartling_logo.png` to the internal web server.
-3. Copy both ZIP files from `dist/packages` to a `downloads` folder next to `index.html` on that server.
+3. Copy the generated `docs/downloads` folder next to `index.html` on that server.
 4. Keep the ZIP asset names unchanged so the download page always points at the latest available builds.
 
 ## Load Chrome or Edge Extension
