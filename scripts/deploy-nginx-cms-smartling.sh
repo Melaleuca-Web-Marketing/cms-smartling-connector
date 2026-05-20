@@ -10,6 +10,7 @@ DIST_DIR="${REPO_DIR}/dist"
 DOWNLOADS_SRC_DIR="${DOCS_SRC_DIR}/downloads"
 NGINX_CONF_SRC="${SCRIPT_DIR}/newrequestform.conf"
 NGINX_CONF_DST="/etc/nginx/conf.d/newrequestform.conf"
+RELEASE_INFO_SRC="${DOCS_SRC_DIR}/release-info.json"
 
 if [[ ${EUID} -ne 0 ]]; then
   exec sudo -- "$0" "$@"
@@ -36,32 +37,6 @@ build_extensions() {
   su - brand -c "cd '${REPO_DIR}' && npm run build:extension"
 }
 
-package_extensions() {
-  local chromium_dir="${DIST_DIR}/chromium"
-  local firefox_dir="${DIST_DIR}/firefox"
-
-  require_command zip
-  require_file "${chromium_dir}/manifest.json"
-  require_file "${firefox_dir}/manifest.json"
-
-  mkdir -p "${DOWNLOADS_SRC_DIR}"
-
-  printf 'Packaging extension ZIP files...\n'
-  rm -f \
-    "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-chromium.zip" \
-    "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-firefox.zip"
-
-  (
-    cd "${chromium_dir}"
-    zip -rq "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-chromium.zip" .
-  )
-
-  (
-    cd "${firefox_dir}"
-    zip -rq "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-firefox.zip" .
-  )
-}
-
 deploy_docs() {
   printf 'Deploying docs to %s...\n' "${DOCS_DST_DIR}"
   install -d -m 0755 \
@@ -71,6 +46,7 @@ deploy_docs() {
 
   install -m 0644 "${DOCS_SRC_DIR}/index.html" "${DOCS_DST_DIR}/index.html"
   install -m 0644 "${DOCS_SRC_DIR}/styles.css" "${DOCS_DST_DIR}/styles.css"
+  install -m 0644 "${RELEASE_INFO_SRC}" "${DOCS_DST_DIR}/release-info.json"
   install -m 0644 "${DOCS_SRC_DIR}/assets/smartling_logo.png" "${DOCS_DST_DIR}/assets/smartling_logo.png"
   install -m 0644 \
     "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-chromium.zip" \
@@ -91,10 +67,10 @@ require_file "${DOCS_SRC_DIR}/index.html"
 require_file "${DOCS_SRC_DIR}/styles.css"
 require_file "${DOCS_SRC_DIR}/assets/smartling_logo.png"
 require_file "${NGINX_CONF_SRC}"
+require_command zip
 require_command npm
 
 build_extensions
-package_extensions
 deploy_docs
 deploy_nginx_config
 

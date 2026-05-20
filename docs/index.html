@@ -19,12 +19,16 @@
 
     <main>
       <section class="hero">
-        <div>
+        <div class="hero-copy">
           <h2>Download The Extension</h2>
           <p>
             Choose the ZIP for your browser, extract it locally, and load the unpacked extension.
             Redownload the ZIP when a new version is published.
           </p>
+          <div class="release-summary" id="releaseSummary">
+            <span class="release-badge">Version loading...</span>
+            <span class="release-meta">Checking recent release history...</span>
+          </div>
         </div>
         <div class="download-actions">
           <a class="primary-link" href="downloads/cms-smartling-connector-chromium.zip">
@@ -76,6 +80,96 @@
           </p>
         </article>
       </section>
+
+      <section class="card changelog-card">
+        <div class="section-heading">
+          <h3>Recent Changes</h3>
+          <p>Latest extension updates published to this download page.</p>
+        </div>
+        <ol class="change-list" id="changeList">
+          <li class="change-item muted">Loading recent changes...</li>
+        </ol>
+      </section>
     </main>
+    <script>
+      const releaseSummary = document.getElementById("releaseSummary");
+      const changeList = document.getElementById("changeList");
+
+      fetch("release-info.json", { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          return response.json();
+        })
+        .then((releaseInfo) => {
+          renderReleaseSummary(releaseInfo);
+          renderChangeList(releaseInfo.changes || []);
+        })
+        .catch((error) => {
+          releaseSummary.innerHTML = `
+            <span class="release-badge">Version unavailable</span>
+            <span class="release-meta">Release metadata could not be loaded: ${escapeHtml(error.message)}</span>
+          `;
+          changeList.innerHTML = '<li class="change-item muted">Recent changes are unavailable right now.</li>';
+        });
+
+      function renderReleaseSummary(releaseInfo) {
+        const changes = Array.isArray(releaseInfo.changes) ? releaseInfo.changes : [];
+        const latestChange = changes[0];
+        const publishedText = latestChange
+          ? `Latest update ${escapeHtml(formatDate(latestChange.date))} in commit ${escapeHtml(latestChange.shortCommit)}.`
+          : "Recent commit history is not available.";
+
+        releaseSummary.innerHTML = `
+          <span class="release-badge">Version ${escapeHtml(releaseInfo.version || "unknown")}</span>
+          <span class="release-meta">${publishedText}</span>
+        `;
+      }
+
+      function renderChangeList(changes) {
+        if (!changes.length) {
+          changeList.innerHTML = '<li class="change-item muted">No recent changes were found.</li>';
+          return;
+        }
+
+        changeList.innerHTML = changes
+          .map(
+            (change) => `
+              <li class="change-item">
+                <div class="change-line">
+                  <span class="change-summary">${escapeHtml(change.summary)}</span>
+                  <span class="change-commit">${escapeHtml(change.shortCommit)}</span>
+                </div>
+                <div class="change-date">${escapeHtml(formatDate(change.date))}</div>
+              </li>
+            `
+          )
+          .join("");
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value || "Unknown date";
+        }
+
+        return date.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    </script>
   </body>
 </html>

@@ -20,10 +20,6 @@ for (const target of selectedTargets) {
   }
 }
 
-function psString(value) {
-  return `'${value.replaceAll("'", "''")}'`;
-}
-
 await mkdir(packageDir, {
   recursive: true
 });
@@ -43,21 +39,27 @@ for (const target of selectedTargets) {
     force: true
   });
 
-  const result = spawnSync(
-    "powershell",
-    [
-      "-NoProfile",
-      "-Command",
-      [
-        "$ErrorActionPreference = 'Stop'",
-        `Compress-Archive -Path ${psString(join(sourceDir, "*"))} -DestinationPath ${psString(zipPath)} -Force`
-      ].join("; ")
-    ],
-    {
-      cwd: rootDir,
-      stdio: "inherit"
-    }
-  );
+  const result =
+    process.platform === "win32"
+      ? spawnSync(
+          "powershell",
+          [
+            "-NoProfile",
+            "-Command",
+            [
+              "$ErrorActionPreference = 'Stop'",
+              `Compress-Archive -Path ${psString(join(sourceDir, "*"))} -DestinationPath ${psString(zipPath)} -Force`
+            ].join("; ")
+          ],
+          {
+            cwd: rootDir,
+            stdio: "inherit"
+          }
+        )
+      : spawnSync("zip", ["-rq", zipPath, "."], {
+          cwd: sourceDir,
+          stdio: "inherit"
+        });
 
   if (result.error || result.status !== 0) {
     throw result.error || new Error(`Failed to package ${target} extension.`);
@@ -66,4 +68,8 @@ for (const target of selectedTargets) {
   console.log(`Packaged ${target} extension at ${relative(rootDir, zipPath)}`);
   await copyFile(zipPath, landingZipPath);
   console.log(`Updated landing page download at ${relative(rootDir, landingZipPath)}`);
+}
+
+function psString(value) {
+  return `'${value.replaceAll("'", "''")}'`;
 }

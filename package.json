@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:extension": "node scripts/build-extension.mjs all && node scripts/package-extension.mjs all",
-    "build:chromium": "node scripts/build-extension.mjs chromium && node scripts/package-extension.mjs chromium",
-    "build:firefox": "node scripts/build-extension.mjs firefox && node scripts/package-extension.mjs firefox",
+    "build:extension": "node scripts/build-extension.mjs all && node scripts/package-extension.mjs all && node scripts/generate-release-info.mjs",
+    "build:chromium": "node scripts/build-extension.mjs chromium && node scripts/package-extension.mjs chromium && node scripts/generate-release-info.mjs",
+    "build:firefox": "node scripts/build-extension.mjs firefox && node scripts/package-extension.mjs firefox && node scripts/generate-release-info.mjs",
     "package:extension": "npm run build:extension",
     "backend": "node --no-warnings=ExperimentalWarning --env-file=.env backend/server.mjs",
-    "check": "node --check backend/server.mjs && node --check backend/store.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js && node --check scripts/build-extension.mjs && node --check scripts/package-extension.mjs"
+    "check": "node --check backend/server.mjs && node --check backend/store.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js && node --check scripts/build-extension.mjs && node --check scripts/package-extension.mjs && node --check scripts/generate-release-info.mjs"
   }
 }
