@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:17817";
+const DEFAULT_API_BASE_URL = "https://usifhqtsagrqt01.melaleuca.net/cms-smartling";
 const CUSTOM_DRAFT_STORAGE_KEY = "smartlingCustomJobDraft";
 let draftSaveTimer = null;
 let restoringDraft = false;

@@ -11,6 +11,7 @@
     "128": "icons/icon128.png"
   },
   "host_permissions": [
+    "https://usifhqtsagrqt01.melaleuca.net/*",
     "http://localhost:17817/*",
     "http://127.0.0.1:17817/*"
   ],
