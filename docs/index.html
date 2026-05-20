@@ -150,6 +150,17 @@
       }
 
       function formatDate(value) {
+        const dateOnlyMatch = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (dateOnlyMatch) {
+          const [, year, month, day] = dateOnlyMatch;
+          const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+          return localDate.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+          });
+        }
+
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) {
           return value || "Unknown date";
