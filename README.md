@@ -86,7 +86,7 @@ dist/packages/cms-smartling-connector-chromium.zip
 dist/packages/cms-smartling-connector-firefox.zip
 ```
 
-These ZIPs can be uploaded to a GitHub Release so the static landing page can link to the latest downloads.
+These ZIPs can be copied to the internal web server so the static landing page can link to the latest downloads.
 
 ## Download Landing Page
 
@@ -96,21 +96,21 @@ A static download page lives in:
 docs/index.html
 ```
 
-It links to expected GitHub Release assets:
+It links to expected ZIP files on the same internal web server:
 
 ```text
-cms-smartling-connector-chromium.zip
-cms-smartling-connector-firefox.zip
+downloads/cms-smartling-connector-chromium.zip
+downloads/cms-smartling-connector-firefox.zip
 ```
 
-This can be published with GitHub Pages from the `docs` folder or copied to an internal static site.
+This should be copied to an internal static site or web server.
 
-Release flow:
+Internal server release flow:
 
 1. Run `npm run package:extension`.
-2. Create a GitHub Release.
-3. Upload both ZIP files from `dist/packages`.
-4. Keep the asset names unchanged so the download page always points at the latest release.
+2. Copy `docs/index.html`, `docs/styles.css`, and `docs/assets/smartling_logo.png` to the internal web server.
+3. Copy both ZIP files from `dist/packages` to a `downloads` folder next to `index.html` on that server.
+4. Keep the ZIP asset names unchanged so the download page always points at the latest available builds.
 
 ## Load Chrome or Edge Extension
 
