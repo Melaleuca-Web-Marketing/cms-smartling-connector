@@ -95,6 +95,38 @@ The extension starts collapsed as a circular Smartling logo button in the lower-
 
 For production, narrow the `content_scripts.matches` value in `extension/manifest.json` and `extension/manifest.firefox.json` to the CMS origin.
 
+## Custom Translation Jobs
+
+The extension popup includes a `Custom Job` tab for strings that are not tied to a SKU, such as facet/refiner labels, category headings, or custom page copy.
+
+Custom jobs support:
+
+- Editable job name, defaulting to `yyyymmdd-Custom`.
+- Project selection for US, CA, or EU.
+- Fixed US target of Spanish and fixed CA target of French.
+- EU target language checkboxes for `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
+- Job due date and authorize-job controls.
+- One or more labeled source strings.
+- Recent custom job history and manual translation checks.
+
+The popup submits custom jobs through:
+
+```text
+POST /api/custom-translation-requests
+```
+
+Recent custom jobs are read through:
+
+```text
+GET /api/custom-translation-requests
+```
+
+Published translations are checked through the same import endpoint used by SKU requests:
+
+```text
+POST /api/translation-requests/{requestId}/import-translations
+```
+
 ## Test Without Smartling
 
 Create a request from the CMS page while the active localized source is `en-US` or `en-CA`.

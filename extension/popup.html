@@ -15,36 +15,126 @@
         </div>
       </header>
 
-      <section class="popup-card">
-        <div class="section-title">
-          <h2>Backend</h2>
-          <span class="status-pill is-muted" id="backendState">Not tested</span>
-        </div>
-        <label for="apiBaseUrl">Backend URL</label>
-        <input id="apiBaseUrl" type="url" spellcheck="false">
-        <div class="actions">
-          <button id="save" type="button">Save</button>
-          <button id="test" type="button" class="secondary">Test backend</button>
-        </div>
-        <p class="small-note" id="backendDetails">Used by the in-page CMS panel.</p>
+      <nav class="popup-tabs" aria-label="Popup sections">
+        <button class="tab-button is-active" type="button" data-tab="custom">Custom Job</button>
+        <button class="tab-button" type="button" data-tab="settings">Settings</button>
+      </nav>
+
+      <section class="tab-panel is-active" id="tab-custom">
+        <section class="popup-card">
+          <div class="section-title">
+            <h2>Custom Job</h2>
+          </div>
+          <label for="customJobName">Job name</label>
+          <input id="customJobName" type="text" spellcheck="false">
+
+          <div class="two-column">
+            <label>
+              <span>Project</span>
+              <select id="customProject">
+                <option value="us">US | en-US to Spanish</option>
+                <option value="ca">Canada | en-CA to French</option>
+                <option value="eu">EU | en-IE to selected languages</option>
+              </select>
+            </label>
+            <label>
+              <span>Due date</span>
+              <input id="customDueDate" type="datetime-local" required>
+            </label>
+          </div>
+
+          <div class="custom-targets" id="customEuTargets" hidden>
+            <div class="section-title">
+              <h2>Target Languages</h2>
+            </div>
+            <div class="custom-target-grid">
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="nl-NL" checked>
+                <span>Netherlands | nl-NL</span>
+              </label>
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="de-DE" checked>
+                <span>Germany | de-DE</span>
+              </label>
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="de-AT" checked>
+                <span>Austria | de-AT</span>
+              </label>
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="pl-PL" checked>
+                <span>Poland | pl-PL</span>
+              </label>
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="lt-LT" checked>
+                <span>Lithuania | lt-LT</span>
+              </label>
+              <label class="target-option">
+                <input class="custom-target-check" type="checkbox" value="it-IT" checked>
+                <span>Italy | it-IT</span>
+              </label>
+            </div>
+          </div>
+
+          <label class="check-row" for="customAuthorize">
+            <input id="customAuthorize" type="checkbox">
+            <span>Authorize job after submission</span>
+          </label>
+
+          <div class="section-title">
+            <h2>Strings</h2>
+            <button id="addCustomString" type="button" class="text-button">Add string</button>
+          </div>
+          <p class="small-note">
+            Use the first box as a label for where the string belongs. Put the actual source copy to translate in the larger box.
+          </p>
+          <div class="custom-string-list" id="customStringList"></div>
+
+          <button id="submitCustomJob" type="button" class="full-width">Send Custom Job</button>
+        </section>
+
+        <section class="popup-card">
+          <div class="section-title">
+            <h2>Recent Custom Jobs</h2>
+            <button id="refreshCustomJobs" type="button" class="text-button">Refresh</button>
+          </div>
+          <div class="custom-job-list" id="customJobList">
+            <div class="empty-state">No custom jobs loaded yet.</div>
+          </div>
+        </section>
       </section>
 
-      <section class="popup-card">
-        <div class="section-title">
-          <h2>Smartling Config</h2>
-          <button id="checkSmartling" type="button" class="text-button">Check</button>
-        </div>
-        <div class="config-summary" id="smartlingSummary">
-          <div class="empty-state">Run a config check to confirm project readiness.</div>
-        </div>
-      </section>
+      <section class="tab-panel" id="tab-settings">
+        <section class="popup-card">
+          <div class="section-title">
+            <h2>Backend</h2>
+            <span class="status-pill is-muted" id="backendState">Not tested</span>
+          </div>
+          <label for="apiBaseUrl">Backend URL</label>
+          <input id="apiBaseUrl" type="url" spellcheck="false">
+          <div class="actions">
+            <button id="save" type="button">Save</button>
+            <button id="test" type="button" class="secondary">Test backend</button>
+          </div>
+          <p class="small-note" id="backendDetails">Used by the in-page CMS panel.</p>
+        </section>
 
-      <section class="popup-card">
-        <div class="section-title">
-          <h2>Panel State</h2>
-        </div>
-        <button id="resetPanel" type="button" class="secondary full-width">Reset panel state</button>
-        <p class="small-note">Restores light theme, collapsed launcher, and collapsed Recent Requests.</p>
+        <section class="popup-card">
+          <div class="section-title">
+            <h2>Smartling Config</h2>
+            <button id="checkSmartling" type="button" class="text-button">Check</button>
+          </div>
+          <div class="config-summary" id="smartlingSummary">
+            <div class="empty-state">Run a config check to confirm project readiness.</div>
+          </div>
+        </section>
+
+        <section class="popup-card">
+          <div class="section-title">
+            <h2>Panel State</h2>
+          </div>
+          <button id="resetPanel" type="button" class="secondary full-width">Reset panel state</button>
+          <p class="small-note">Restores light theme, collapsed launcher, and collapsed Recent Requests.</p>
+        </section>
       </section>
 
       <p id="status" role="status" aria-live="polite"></p>

@@ -22,8 +22,10 @@
 }
 
 body {
-  width: 360px;
+  width: 390px;
+  max-height: 620px;
   margin: 0;
+  overflow-y: auto;
   background: var(--sl-bg);
   color: var(--sl-text);
   font-family: var(--sl-font);
@@ -86,6 +88,44 @@ h1 {
   background: var(--sl-bg);
 }
 
+.popup-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  border: 1px solid var(--sl-border);
+  border-radius: 10px;
+  padding: 4px;
+  background: var(--sl-surface);
+}
+
+button.tab-button {
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  color: #334155;
+  box-shadow: none;
+}
+
+button.tab-button:hover {
+  border-color: var(--sl-border);
+  background: var(--sl-bg);
+}
+
+button.tab-button.is-active {
+  border-color: var(--sl-border-strong);
+  background: var(--sl-bg);
+  color: #0f172a;
+}
+
+.tab-panel {
+  display: none;
+  gap: 10px;
+}
+
+.tab-panel.is-active {
+  display: grid;
+}
+
 .section-title {
   display: flex;
   align-items: center;
@@ -106,7 +146,9 @@ label {
   font-weight: 750;
 }
 
-input {
+input,
+select,
+textarea {
   display: block;
   width: 100%;
   min-height: 38px;
@@ -120,9 +162,178 @@ input {
   outline: none;
 }
 
-input:focus {
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--sl-brand);
   box-shadow: 0 0 0 3px var(--sl-ring);
+}
+
+select {
+  cursor: pointer;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.two-column label {
+  display: grid;
+  gap: 6px;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  color: #334155;
+  font-weight: 650;
+}
+
+.check-row input {
+  width: 15px;
+  min-height: 15px;
+  margin: 0;
+  accent-color: var(--sl-brand);
+}
+
+.custom-targets {
+  display: grid;
+  gap: 7px;
+}
+
+.custom-targets[hidden],
+.custom-targets.is-hidden {
+  display: none !important;
+}
+
+.custom-target-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.target-option {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: 34px;
+  border: 1px solid var(--sl-border);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: var(--sl-surface);
+  color: #334155;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.target-option input {
+  width: 15px;
+  min-height: 15px;
+  margin: 0;
+  accent-color: var(--sl-brand);
+}
+
+.target-option span {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155 !important;
+  opacity: 1 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-text-fill-color: #334155;
+}
+
+.custom-string-list,
+.custom-job-list,
+.custom-translation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-string-row,
+.custom-job-item,
+.custom-translation-item {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--sl-border);
+  border-radius: 9px;
+  padding: 8px;
+  background: var(--sl-surface);
+}
+
+.custom-string-row label {
+  display: grid;
+  gap: 5px;
+}
+
+.custom-string-row label span {
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.custom-string-row .text-button {
+  justify-self: start;
+}
+
+.custom-job-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.custom-job-locale,
+.custom-job-name,
+.custom-translation-label {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.custom-job-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-check-button {
+  justify-self: start;
+}
+
+.custom-job-note {
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  padding: 6px 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.custom-translation-item {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.custom-translation-value {
+  max-height: 90px;
+  overflow: auto;
+  color: #14532d;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 
 .actions {

@@ -470,7 +470,7 @@ function buildSmartlingJsonPayload(request) {
   return Object.fromEntries(
     request.fields
       .filter((field) => field.sentToSmartling && field.sourceText.trim())
-      .map((field) => [`sku.${request.sku}.${field.fieldKey}`, field.sourceText])
+      .map((field) => [field.smartlingKey || `sku.${request.sku}.${field.fieldKey}`, field.sourceText])
   );
 }
 

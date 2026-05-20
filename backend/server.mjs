@@ -191,6 +191,30 @@ function normalizeFields(fields) {
   return normalized;
 }
 
+function normalizeCustomFields(fields) {
+  const normalized = [];
+  const keyCounts = new Map();
+
+  for (const [index, field] of (Array.isArray(fields) ? fields : []).entries()) {
+    if (field == null) continue;
+    const label = normalizeLabel(field.label || field.fieldLabel || `String ${index + 1}`);
+    const sourceText = typeof field.value === "string" ? field.value : String(field.value ?? "");
+    const baseFieldKey =
+      safeSegment(field.fieldKey || label || `string-${index + 1}`) || `string-${index + 1}`;
+    const count = (keyCounts.get(baseFieldKey) || 0) + 1;
+    keyCounts.set(baseFieldKey, count);
+    const fieldKey = count === 1 ? baseFieldKey : `${baseFieldKey}-${count}`;
+
+    normalized.push({
+      fieldKey,
+      fieldLabel: label,
+      sourceText
+    });
+  }
+
+  return normalized;
+}
+
 function sourceHash(value) {
   return createHash("sha256").update(String(value || ""), "utf8").digest("hex");
 }
@@ -253,6 +277,15 @@ function buildFileUri(route, sku, requestId = null) {
   ].join("/");
 }
 
+function buildCustomFileUri(route, jobName, requestId) {
+  return [
+    "cms-custom-copy",
+    `${safeSegment(route.smartlingSourceLocale)}_${safeSegment(route.smartlingTargetLocale)}`,
+    safeSegment(jobName || requestId),
+    `${safeSegment(requestId)}.json`
+  ].join("/");
+}
+
 function latestTranslationsFor(store, sku, targetLocale) {
   const latestByField = new Map();
 
@@ -272,6 +305,36 @@ function latestTranslationsFor(store, sku, targetLocale) {
   );
 }
 
+function attachTranslationsToCustomRequests(store, requests) {
+  const translationsByRequest = new Map();
+
+  for (const translation of store.translations) {
+    if (translation.requestType !== "custom") {
+      continue;
+    }
+    const list = translationsByRequest.get(translation.requestId) || [];
+    list.push(translation);
+    translationsByRequest.set(translation.requestId, list);
+  }
+
+  return requests.map((request) => {
+    const byField = new Map(
+      (translationsByRequest.get(request.id) || []).map((translation) => [
+        translation.fieldKey,
+        translation
+      ])
+    );
+
+    return {
+      ...request,
+      fields: (request.fields || []).map((field) => ({
+        ...field,
+        translatedText: byField.get(field.fieldKey)?.translatedText || field.translatedText || null
+      }))
+    };
+  });
+}
+
 function mapDownloadedTranslations(request, translatedFile) {
   const translations = [];
   const createdAt = nowIso();
@@ -281,7 +344,7 @@ function mapDownloadedTranslations(request, translatedFile) {
       continue;
     }
 
-    const smartlingKey = `sku.${request.sku}.${field.fieldKey}`;
+    const smartlingKey = getSmartlingFieldKey(request, field);
     const translatedText = translatedFile?.[smartlingKey];
 
     if (translatedText == null || String(translatedText).trim() === "") {
@@ -294,6 +357,8 @@ function mapDownloadedTranslations(request, translatedFile) {
       createdAt,
       status: "staged",
       sku: request.sku,
+      customJobKey: request.customJobKey || null,
+      requestType: request.requestType || "sku",
       country: request.country,
       targetCountry: request.targetCountry,
       sourceLocale: request.sourceLocale,
@@ -308,6 +373,10 @@ function mapDownloadedTranslations(request, translatedFile) {
   }
 
   return translations;
+}
+
+function getSmartlingFieldKey(request, field) {
+  return field.smartlingKey || `sku.${request.sku}.${field.fieldKey}`;
 }
 
 async function handleCreateRequest(req, res) {
@@ -390,6 +459,94 @@ async function handleCreateRequest(req, res) {
     type: "translation_request_created",
     requestId: request.id,
     sku,
+    targetLocale: request.targetLocale,
+    status: request.status,
+    smartlingMode: request.smartling?.mode || null
+  });
+  await saveStore(store);
+
+  return sendJson(res, 201, {
+    request
+  });
+}
+
+async function handleCreateCustomRequest(req, res) {
+  const body = await readJsonBody(req);
+  const sourceLocale = String(body.sourceLocale || "").trim();
+  const targetLocale = String(body.targetLocale || "").trim();
+  const route = findRouteBySource(null, sourceLocale, targetLocale);
+  const requestedJobName = String(body.jobName || "").trim();
+  const requestedJobDueDate = normalizeJobDueDate(body.jobDueDate || body.dueDate);
+  const authorizeJob = body.authorizeJob === true;
+
+  if (!route) {
+    return sendError(res, 400, "No translation route is configured for this custom request.", {
+      sourceLocale,
+      targetLocale,
+      configuredRoutes: ROUTES
+    });
+  }
+
+  const jobName = requestedJobName || `${formatCompactDate()}-Custom`;
+
+  if (!requestedJobDueDate) {
+    return sendError(res, 400, "Missing or invalid job due date.");
+  }
+
+  const requestId = `tr_${randomUUID()}`;
+  const customJobKey = safeSegment(jobName || requestId);
+  const fields = normalizeCustomFields(body.fields || body.strings).map((field) => {
+    const text = field.sourceText;
+    const trimmed = text.trim();
+    return {
+      ...field,
+      smartlingKey: `custom.${customJobKey}.${field.fieldKey}`,
+      sourceHash: sourceHash(text),
+      emptySource: trimmed.length === 0,
+      sentToSmartling: trimmed.length > 0
+    };
+  });
+
+  if (!fields.length) {
+    return sendError(res, 400, "Add at least one string before submitting to Smartling.");
+  }
+
+  if (!fields.some((field) => field.sentToSmartling)) {
+    return sendError(res, 400, "At least one custom string must have source text.");
+  }
+
+  const request = {
+    id: requestId,
+    requestType: "custom",
+    customJobKey,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+    status: "stored_waiting_for_smartling",
+    sku: null,
+    country: route.cmsCountry,
+    sourceLocale: route.sourceCmsLocale,
+    targetCountry: route.targetCmsCountry,
+    targetLocale: route.targetCmsLocale,
+    smartlingProjectKey: route.smartlingProjectKey,
+    smartlingSourceLocale: route.smartlingSourceLocale,
+    smartlingTargetLocale: route.smartlingTargetLocale,
+    jobName,
+    jobDueDate: requestedJobDueDate,
+    authorizeJob,
+    fileUri: buildCustomFileUri(route, jobName, requestId),
+    fields
+  };
+
+  await submitRequestToSmartling(request);
+
+  const store = await loadStore();
+  store.requests.push(request);
+  store.events.push({
+    id: `evt_${randomUUID()}`,
+    createdAt: nowIso(),
+    type: "custom_translation_request_created",
+    requestId: request.id,
+    customJobKey,
     targetLocale: request.targetLocale,
     status: request.status,
     smartlingMode: request.smartling?.mode || null
@@ -521,14 +678,15 @@ async function handleImportSmartlingTranslations(res, requestId) {
           "Published file was downloaded, but no translated values matched this request's field keys."
       };
       request.updatedAt = importedAt;
-      store.events.push({
-        id: `evt_${randomUUID()}`,
-        createdAt: importedAt,
-        type: "translation_import_empty",
-        requestId: request.id,
-        sku: request.sku,
-        targetLocale: request.targetLocale
-      });
+    store.events.push({
+      id: `evt_${randomUUID()}`,
+      createdAt: importedAt,
+      type: "translation_import_empty",
+      requestId: request.id,
+      sku: request.sku,
+      customJobKey: request.customJobKey || null,
+      targetLocale: request.targetLocale
+    });
       await saveStore(store);
       return sendJson(res, 200, {
         request,
@@ -557,6 +715,7 @@ async function handleImportSmartlingTranslations(res, requestId) {
       type: "translations_imported",
       requestId: request.id,
       sku: request.sku,
+      customJobKey: request.customJobKey || null,
       targetLocale: request.targetLocale,
       translationCount: translations.length
     });
@@ -576,6 +735,7 @@ async function handleImportSmartlingTranslations(res, requestId) {
       type: "translation_import_error",
       requestId: request.id,
       sku: request.sku,
+      customJobKey: request.customJobKey || null,
       targetLocale: request.targetLocale,
       message: error.message
     });
@@ -617,6 +777,8 @@ async function handleMockPublish(req, res, requestId) {
       createdAt: publishedAt,
       status: "published",
       sku: request.sku,
+      customJobKey: request.customJobKey || null,
+      requestType: request.requestType || "sku",
       country: request.country,
       targetCountry: request.targetCountry,
       sourceLocale: request.sourceLocale,
@@ -765,12 +927,30 @@ async function handleRequest(req, res) {
       return await handleCreateRequest(req, res);
     }
 
+    if (req.method === "POST" && pathname === "/api/custom-translation-requests") {
+      return await handleCreateCustomRequest(req, res);
+    }
+
+    if (req.method === "GET" && pathname === "/api/custom-translation-requests") {
+      const store = await loadStore();
+      const jobName = String(url.searchParams.get("jobName") || "").trim().toLowerCase();
+      const requests = store.requests
+        .filter((request) => request.requestType === "custom")
+        .filter((request) => !jobName || String(request.jobName || "").toLowerCase().includes(jobName));
+
+      return sendJson(res, 200, {
+        requests: attachTranslationsToCustomRequests(store, requests)
+          .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      });
+    }
+
     if (req.method === "GET" && pathname === "/api/translation-requests") {
       const store = await loadStore();
       const sku = url.searchParams.get("sku");
-      const requests = sku
+      const requests = (sku
         ? store.requests.filter((request) => request.sku === sku)
-        : store.requests;
+        : store.requests
+      ).filter((request) => request.requestType !== "custom");
       return sendJson(res, 200, {
         requests: requests
           .slice()

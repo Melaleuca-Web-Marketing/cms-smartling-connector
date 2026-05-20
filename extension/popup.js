@@ -1,14 +1,33 @@
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:17817";
+const CUSTOM_DRAFT_STORAGE_KEY = "smartlingCustomJobDraft";
+let draftSaveTimer = null;
+let restoringDraft = false;
 
 const input = document.getElementById("apiBaseUrl");
 const statusElement = document.getElementById("status");
 const backendState = document.getElementById("backendState");
 const backendDetails = document.getElementById("backendDetails");
 const smartlingSummary = document.getElementById("smartlingSummary");
+const customJobName = document.getElementById("customJobName");
+const customProject = document.getElementById("customProject");
+const customEuTargets = document.getElementById("customEuTargets");
+const customDueDate = document.getElementById("customDueDate");
+const customAuthorize = document.getElementById("customAuthorize");
+const customStringList = document.getElementById("customStringList");
+const customJobList = document.getElementById("customJobList");
 
-chrome.storage.local.get({ apiBaseUrl: DEFAULT_API_BASE_URL }, (items) => {
-  input.value = items.apiBaseUrl || DEFAULT_API_BASE_URL;
-});
+chrome.storage.local.get(
+  {
+    apiBaseUrl: DEFAULT_API_BASE_URL,
+    [CUSTOM_DRAFT_STORAGE_KEY]: null
+  },
+  (items) => {
+    input.value = items.apiBaseUrl || DEFAULT_API_BASE_URL;
+    initCustomJobForm(items[CUSTOM_DRAFT_STORAGE_KEY]);
+  }
+);
+
+wireTabs();
 
 document.getElementById("save").addEventListener("click", () => {
   const apiBaseUrl = getApiBaseUrl();
@@ -22,6 +41,22 @@ document.getElementById("save").addEventListener("click", () => {
 document.getElementById("test").addEventListener("click", testBackend);
 document.getElementById("checkSmartling").addEventListener("click", checkSmartlingConfig);
 document.getElementById("resetPanel").addEventListener("click", resetPanelState);
+document.getElementById("addCustomString").addEventListener("click", () => addCustomStringRow());
+document.getElementById("submitCustomJob").addEventListener("click", submitCustomJob);
+document.getElementById("refreshCustomJobs").addEventListener("click", loadCustomJobs);
+customProject.addEventListener("change", () => {
+  const project = getSelectedProject();
+  customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
+  renderProjectTargetControls(project);
+  scheduleCustomDraftSave();
+});
+customJobName.addEventListener("input", scheduleCustomDraftSave);
+customDueDate.addEventListener("input", scheduleCustomDraftSave);
+customAuthorize.addEventListener("change", scheduleCustomDraftSave);
+document.querySelectorAll(".custom-target-check").forEach((inputElement) => {
+  inputElement.addEventListener("change", scheduleCustomDraftSave);
+});
+customStringList.addEventListener("input", scheduleCustomDraftSave);
 
 async function testBackend() {
   const apiBaseUrl = getApiBaseUrl();
@@ -82,6 +117,318 @@ function resetPanelState() {
   );
 }
 
+function wireTabs() {
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.tab;
+      document.querySelectorAll(".tab-button").forEach((item) => {
+        item.classList.toggle("is-active", item === button);
+      });
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.classList.toggle("is-active", panel.id === `tab-${tab}`);
+      });
+    });
+  });
+}
+
+function initCustomJobForm(draft = null) {
+  restoringDraft = true;
+  customJobName.value = buildDefaultCustomJobName();
+  customDueDate.value = getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
+  customAuthorize.checked = true;
+  customStringList.innerHTML = "";
+
+  if (draft) {
+    restoreCustomDraft(draft);
+  } else {
+    renderProjectTargetControls(getSelectedProject());
+    addCustomStringRow("", "");
+  }
+
+  restoringDraft = false;
+  loadCustomJobs();
+}
+
+function addCustomStringRow(label = "", value = "") {
+  const row = document.createElement("div");
+  row.className = "custom-string-row";
+  row.innerHTML = `
+    <label>
+      <span>Custom label</span>
+      <input class="custom-string-label" type="text" placeholder="Custom label" value="${escapeAttribute(label)}">
+    </label>
+    <label>
+      <span>Source string</span>
+      <textarea class="custom-string-value" rows="3" placeholder="Text to translate">${escapeHtml(value)}</textarea>
+    </label>
+    <button class="text-button custom-remove" type="button">Remove</button>
+  `;
+  row.querySelector(".custom-remove").addEventListener("click", () => {
+    if (customStringList.querySelectorAll(".custom-string-row").length === 1) {
+      row.querySelector(".custom-string-label").value = "";
+      row.querySelector(".custom-string-value").value = "";
+      scheduleCustomDraftSave();
+      return;
+    }
+    row.remove();
+    scheduleCustomDraftSave();
+  });
+  customStringList.append(row);
+  scheduleCustomDraftSave();
+}
+
+function restoreCustomDraft(draft) {
+  customProject.value = draft.project || "us";
+  customJobName.value = draft.jobName || buildDefaultCustomJobName();
+  customAuthorize.checked = draft.authorizeJob !== false;
+  restoreEuTargets(draft.euTargets);
+  renderProjectTargetControls(getSelectedProject());
+  customDueDate.value =
+    draft.jobDueDateLocal || getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
+
+  const strings = Array.isArray(draft.strings) && draft.strings.length
+    ? draft.strings
+    : [{ label: "", value: "" }];
+
+  for (const string of strings) {
+    addCustomStringRow(string.label || "", string.value || "");
+  }
+}
+
+function restoreEuTargets(targets) {
+  const selectedTargets = new Set(Array.isArray(targets) ? targets : []);
+
+  document.querySelectorAll(".custom-target-check").forEach((inputElement) => {
+    inputElement.checked = selectedTargets.size ? selectedTargets.has(inputElement.value) : true;
+  });
+}
+
+function scheduleCustomDraftSave() {
+  if (restoringDraft) {
+    return;
+  }
+
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = setTimeout(saveCustomDraft, 150);
+}
+
+function saveCustomDraft() {
+  chrome.storage.local.set({
+    [CUSTOM_DRAFT_STORAGE_KEY]: getCustomDraft()
+  });
+}
+
+function clearCustomDraft() {
+  clearTimeout(draftSaveTimer);
+  chrome.storage.local.remove(CUSTOM_DRAFT_STORAGE_KEY);
+}
+
+function getCustomDraft() {
+  return {
+    savedAt: new Date().toISOString(),
+    project: customProject.value,
+    jobName: customJobName.value,
+    jobDueDateLocal: customDueDate.value,
+    authorizeJob: customAuthorize.checked,
+    euTargets: getSelectedEuTargetLocales(),
+    strings: [...customStringList.querySelectorAll(".custom-string-row")].map((row) => ({
+      label: row.querySelector(".custom-string-label")?.value || "",
+      value: row.querySelector(".custom-string-value")?.value || ""
+    }))
+  };
+}
+
+async function submitCustomJob() {
+  const project = getSelectedProject();
+  const routes = getSelectedCustomRoutes(project);
+  const jobName = customJobName.value.trim() || buildDefaultCustomJobName();
+  const jobDueDate = toSmartlingDueDateIso(customDueDate.value);
+  const fields = getCustomFields();
+
+  if (!jobDueDate) {
+    setStatus("Select a valid custom job due date.", "error");
+    return;
+  }
+
+  if (!fields.length) {
+    setStatus("Add at least one custom string before submitting.", "error");
+    return;
+  }
+
+  if (!routes.length) {
+    setStatus("Select at least one target language before submitting.", "error");
+    return;
+  }
+
+  setStatus(
+    routes.length === 1
+      ? "Submitting custom job..."
+      : `Submitting ${routes.length} custom jobs...`
+  );
+
+  try {
+    const responses = [];
+    for (const route of routes) {
+      responses.push(
+        await apiFetch("/api/custom-translation-requests", {
+          method: "POST",
+          body: JSON.stringify({
+            sourceLocale: route.sourceLocale,
+            targetLocale: route.targetLocale,
+            jobName,
+            jobDueDate,
+            authorizeJob: customAuthorize.checked,
+            fields
+          })
+        })
+      );
+    }
+
+    setStatus(getMultiSubmitStatusMessage(responses.map((response) => response.request)), "success");
+    customJobName.value = buildDefaultCustomJobName();
+    customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
+    customStringList.innerHTML = "";
+    addCustomStringRow("", "");
+    clearCustomDraft();
+    await loadCustomJobs();
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+function getCustomFields() {
+  return [...customStringList.querySelectorAll(".custom-string-row")]
+    .map((row, index) => ({
+      label:
+        row.querySelector(".custom-string-label")?.value.trim() ||
+        `String ${index + 1}`,
+      value: row.querySelector(".custom-string-value")?.value || ""
+    }))
+    .filter((field) => field.value.trim());
+}
+
+async function loadCustomJobs() {
+  customJobList.innerHTML = '<div class="empty-state">Loading custom jobs...</div>';
+
+  try {
+    const response = await apiFetch("/api/custom-translation-requests");
+    renderCustomJobs(response.requests || []);
+  } catch (error) {
+    customJobList.innerHTML = `<div class="empty-state">Could not load custom jobs: ${escapeHtml(
+      error.message
+    )}</div>`;
+  }
+}
+
+function renderCustomJobs(requests) {
+  if (!requests.length) {
+    customJobList.innerHTML = '<div class="empty-state">No custom jobs submitted yet.</div>';
+    return;
+  }
+
+  customJobList.innerHTML = requests.slice(0, 8).map(renderCustomJobItem).join("");
+  customJobList.querySelectorAll('[data-action="check-custom-job"]').forEach((button) => {
+    button.addEventListener("click", () => checkCustomJob(button.dataset.requestId));
+  });
+}
+
+function renderCustomJobItem(request) {
+  return `
+    <div class="custom-job-item">
+      <div class="custom-job-main">
+        <span class="status-pill ${escapeAttribute(getRequestStatusClass(request))}">${escapeHtml(
+          getRequestStatusLabel(request)
+        )}</span>
+        <span class="custom-job-locale">${escapeHtml(request.targetLocale || "unknown")}</span>
+      </div>
+      <div class="custom-job-name">${escapeHtml(request.jobName || request.id)}</div>
+      <div class="project-details">${escapeHtml(formatDate(request.createdAt))}${
+        request.smartling?.translationJobUid
+          ? ` | Job ${escapeHtml(request.smartling.translationJobUid)}`
+          : ""
+      }</div>
+      ${renderCustomTranslations(request)}
+      ${
+        request.status === "submitted_to_smartling"
+          ? `<button class="secondary custom-check-button" type="button" data-action="check-custom-job" data-request-id="${escapeAttribute(
+              request.id
+            )}">Check translations</button>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderCustomTranslations(request) {
+  const translations = request.status === "translations_available" ? request.fields || [] : [];
+  if (!translations.length) {
+    const message = request.import?.message;
+    return message
+      ? `<div class="custom-job-note">${escapeHtml(message)}</div>`
+      : "";
+  }
+
+  return `
+    <div class="custom-translation-list">
+      ${translations
+        .filter((field) => field.sentToSmartling)
+        .map(
+          (field) => `
+            <div class="custom-translation-item">
+              <div class="custom-translation-label">${escapeHtml(field.fieldLabel)}</div>
+              <div class="custom-translation-value">${escapeHtml(field.translatedText || "Imported; refresh job if value is missing.")}</div>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+async function checkCustomJob(requestId) {
+  setStatus("Checking custom job translations...");
+
+  try {
+    const response = await apiFetch(
+      `/api/translation-requests/${encodeURIComponent(requestId)}/import-translations`,
+      {
+        method: "POST"
+      }
+    );
+
+    const request = {
+      ...response.request,
+      fields: mergeFieldTranslations(response.request.fields, response.translations)
+    };
+    await loadCustomJobs();
+
+    if (request.status === "translations_available") {
+      setStatus(
+        `Imported ${response.translations.length} custom translation${
+          response.translations.length === 1 ? "" : "s"
+        }.`,
+        "success"
+      );
+    } else if (request.import?.mode === "not_ready") {
+      setStatus(
+        `Custom translations are not ready yet. Progress: ${request.import.progressPercent ?? 0}%.`
+      );
+    } else {
+      setStatus(request.import?.message || "Custom translations were not imported yet.", "error");
+    }
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+function mergeFieldTranslations(fields = [], translations = []) {
+  const byKey = new Map(translations.map((translation) => [translation.fieldKey, translation]));
+  return fields.map((field) => ({
+    ...field,
+    translatedText: byKey.get(field.fieldKey)?.translatedText || field.translatedText
+  }));
+}
+
 function renderSmartlingStatus(status) {
   const projects = status.projects || {};
   const rows = [
@@ -125,6 +472,98 @@ function renderProjectRow(label, project = {}) {
   `;
 }
 
+async function apiFetch(path, options = {}) {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || `Backend request failed: ${response.status}`);
+  }
+
+  return data;
+}
+
+function getSelectedProject() {
+  const project = customProject.value;
+  if (project === "ca") {
+    return {
+      id: "ca",
+      sourceLocale: "en-CA",
+      targetLocales: ["fr-CA"]
+    };
+  }
+
+  if (project === "eu") {
+    return {
+      id: "eu",
+      sourceLocale: "en-IE",
+      targetLocales: getSelectedEuTargetLocales()
+    };
+  }
+
+  return {
+    id: "us",
+    sourceLocale: "en-US",
+    targetLocales: ["es-US"]
+  };
+}
+
+function getSelectedCustomRoutes(project = getSelectedProject()) {
+  return project.targetLocales.map((targetLocale) => ({
+    sourceLocale: project.sourceLocale,
+    targetLocale
+  }));
+}
+
+function getSelectedEuTargetLocales() {
+  return [...document.querySelectorAll(".custom-target-check:checked")].map(
+    (input) => input.value
+  );
+}
+
+function renderProjectTargetControls(project = getSelectedProject()) {
+  const isEu = project.id === "eu";
+  customEuTargets.hidden = !isEu;
+  customEuTargets.classList.toggle("is-hidden", !isEu);
+  customEuTargets.setAttribute("aria-hidden", String(!isEu));
+}
+
+function getMultiSubmitStatusMessage(requests) {
+  const submitted = requests.filter((request) => request.status === "submitted_to_smartling");
+  const failed = requests.filter((request) => request.status === "smartling_error");
+  const stored = requests.length - submitted.length - failed.length;
+  const targets = requests.map((request) => request.targetLocale).join(", ");
+  const parts = [];
+
+  if (submitted.length) parts.push(`${submitted.length} submitted`);
+  if (failed.length) parts.push(`${failed.length} failed`);
+  if (stored) parts.push(`${stored} stored locally`);
+
+  return `${parts.join(", ")} for ${targets}.`;
+}
+
+function getRequestStatusLabel(request) {
+  if (request.status === "translations_available") return "Ready";
+  if (request.status === "submitted_to_smartling") return "Submitted";
+  if (request.status === "smartling_error") return "Error";
+  if (request.smartling?.mode === "not_configured") return "Local";
+  return "Stored";
+}
+
+function getRequestStatusClass(request) {
+  if (request.status === "translations_available") return "is-success";
+  if (request.status === "submitted_to_smartling") return "is-success";
+  if (request.status === "smartling_error") return "is-error";
+  if (request.smartling?.mode === "not_configured") return "is-muted";
+  return "is-warning";
+}
+
 function getApiBaseUrl() {
   return (input.value.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
@@ -140,6 +579,68 @@ function setStatus(message, state = "muted") {
   statusElement.className = state === "error" ? "is-error" : state === "success" ? "is-success" : "";
 }
 
+function buildDefaultCustomJobName(date = new Date()) {
+  return `${formatCompactDate(date)}-Custom`;
+}
+
+function getDefaultDueDateLocalValue(sourceLocale) {
+  const dueDate = addBusinessDays(new Date(), sourceLocale === "en-IE" ? 5 : 3);
+  dueDate.setHours(17, 0, 0, 0);
+  return toDateTimeLocalValue(dueDate);
+}
+
+function addBusinessDays(startDate, businessDays) {
+  const date = new Date(startDate);
+  let remaining = businessDays;
+
+  while (remaining > 0) {
+    date.setDate(date.getDate() + 1);
+    if (date.getDay() !== 0 && date.getDay() !== 6) {
+      remaining -= 1;
+    }
+  }
+
+  return date;
+}
+
+function toDateTimeLocalValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function toSmartlingDueDateIso(localValue) {
+  const date = new Date(localValue);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+function formatCompactDate(date = new Date()) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value || "";
+  }
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function formatTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -150,6 +651,10 @@ function formatTime(value) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/`/g, "&#096;");
 }
 
 function escapeHtml(value) {
