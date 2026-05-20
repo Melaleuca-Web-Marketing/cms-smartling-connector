@@ -65,21 +65,61 @@ Or build both:
 npm run build:extension
 ```
 
+Build ZIP packages for distribution:
+
+```powershell
+npm run package:extension
+```
+
 The build output is ignored by Git:
 
 ```text
 dist/chromium
 dist/firefox
+dist/packages
 ```
+
+The package script creates:
+
+```text
+dist/packages/cms-smartling-connector-chromium.zip
+dist/packages/cms-smartling-connector-firefox.zip
+```
+
+These ZIPs can be uploaded to a GitHub Release so the static landing page can link to the latest downloads.
+
+## Download Landing Page
+
+A static download page lives in:
+
+```text
+docs/index.html
+```
+
+It links to expected GitHub Release assets:
+
+```text
+cms-smartling-connector-chromium.zip
+cms-smartling-connector-firefox.zip
+```
+
+This can be published with GitHub Pages from the `docs` folder or copied to an internal static site.
+
+Release flow:
+
+1. Run `npm run package:extension`.
+2. Create a GitHub Release.
+3. Upload both ZIP files from `dist/packages`.
+4. Keep the asset names unchanged so the download page always points at the latest release.
 
 ## Load Chrome or Edge Extension
 
 1. Run `npm run build:chromium`.
 2. Open `chrome://extensions` or `edge://extensions`.
-2. Enable developer mode.
-3. Load the unpacked extension from `dist/chromium`.
-4. Open the CMS product page.
-5. Use the extension popup if the backend URL needs to change.
+3. Enable developer mode.
+4. Load the unpacked extension from `dist/chromium`.
+5. Open the CMS product page.
+6. Use the extension popup if the backend URL needs to change.
 
 ## Load Firefox Extension
 

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CMS Smartling Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">
+        <img src="assets/smartling_logo.png" alt="" class="brand-logo">
+        <div>
+          <h1>CMS Smartling Assistant</h1>
+          <p>Browser extension downloads for CMS product-copy translation workflows.</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <h2>Download The Extension</h2>
+          <p>
+            Choose the ZIP for your browser, extract it locally, and load the unpacked extension.
+            Redownload the ZIP when a new version is published.
+          </p>
+        </div>
+        <div class="download-actions">
+          <a class="primary-link" href="https://github.com/Melaleuca-Web-Marketing/cms-smartling-connector/releases/latest/download/cms-smartling-connector-chromium.zip">
+            Download Chrome/Edge ZIP
+          </a>
+          <a class="secondary-link" href="https://github.com/Melaleuca-Web-Marketing/cms-smartling-connector/releases/latest/download/cms-smartling-connector-firefox.zip">
+            Download Firefox ZIP
+          </a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h3>Chrome Or Edge</h3>
+          <ol>
+            <li>Download and extract the Chrome/Edge ZIP.</li>
+            <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code>.</li>
+            <li>Enable developer mode.</li>
+            <li>Choose <strong>Load unpacked</strong>.</li>
+            <li>Select the extracted extension folder.</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h3>Firefox</h3>
+          <ol>
+            <li>Download and extract the Firefox ZIP.</li>
+            <li>Open <code>about:debugging#/runtime/this-firefox</code>.</li>
+            <li>Choose <strong>Load Temporary Add-on</strong>.</li>
+            <li>Select the extracted <code>manifest.json</code>.</li>
+            <li>Grant site access from the extensions button if needed.</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h3>Backend Requirement</h3>
+          <p>
+            The extension talks to the local CMS Smartling backend at
+            <code>http://127.0.0.1:17817</code> by default. Use the extension popup to change or test
+            the backend URL.
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>Updates</h3>
+          <p>
+            To update, download the latest ZIP, extract it, and reload the unpacked extension from the
+            same browser extension page.
+          </p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
