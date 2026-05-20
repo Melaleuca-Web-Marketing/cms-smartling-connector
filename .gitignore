@@ -1,7 +1,7 @@
 /.env
 /dist/
 /docs/downloads/*.zip
- /docs/release-info.json
+/docs/release-info.json
 !docs/downloads/.gitkeep
 backend/data/*.json
 backend/data/*.sqlite
