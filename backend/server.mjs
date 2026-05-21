@@ -31,7 +31,7 @@ const ROUTES = [
     targetCmsLocale: "es-US",
     smartlingProjectKey: "cms-product-copy-us",
     smartlingSourceLocale: "en-US",
-    smartlingTargetLocale: "es-US"
+    smartlingTargetLocale: "es-LA"
   },
   {
     id: "ca-fr",

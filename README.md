@@ -6,7 +6,7 @@ The extension detects the CMS product page, submits only `Product Name` and `Des
 
 ## Workflow
 
-- `United States | en-US` submits to the US project for `es-US`.
+- `United States | en-US` submits to the US project for CMS target `es-US`, using Smartling locale `es-LA`.
 - `Canada | en-CA` submits to the CA project for `fr-CA`.
 - `Ireland | en-IE` submits to the EU project for selected target locales: `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
 - `United States | es-US` and `Canada | fr-CA` show staged translation inserts.
