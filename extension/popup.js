@@ -8,6 +8,7 @@ const statusElement = document.getElementById("status");
 const backendState = document.getElementById("backendState");
 const backendDetails = document.getElementById("backendDetails");
 const smartlingSummary = document.getElementById("smartlingSummary");
+const updateBanner = document.getElementById("updateBanner");
 const customJobName = document.getElementById("customJobName");
 const customProject = document.getElementById("customProject");
 const customEuTargets = document.getElementById("customEuTargets");
@@ -24,6 +25,7 @@ chrome.storage.local.get(
   (items) => {
     input.value = items.apiBaseUrl || DEFAULT_API_BASE_URL;
     initCustomJobForm(items[CUSTOM_DRAFT_STORAGE_KEY]);
+    checkForExtensionUpdates();
   }
 );
 
@@ -35,6 +37,7 @@ document.getElementById("save").addEventListener("click", () => {
     input.value = apiBaseUrl;
     setBackendState("muted", "Not tested", "Backend URL saved. Test the connection when ready.");
     setStatus("Saved backend URL.", "success");
+    checkForExtensionUpdates();
   });
 });
 
@@ -114,6 +117,43 @@ function resetPanelState() {
       setStatus("Panel state reset. Refresh the CMS page if it is already open.", "success");
     }
   );
+}
+
+async function checkForExtensionUpdates() {
+  if (!globalThis.SmartlingVersionCheck) {
+    return;
+  }
+
+  try {
+    renderUpdateBanner(await SmartlingVersionCheck.check(getApiBaseUrl()));
+  } catch {
+    renderUpdateBanner(null);
+  }
+}
+
+function renderUpdateBanner(updateInfo) {
+  if (!updateBanner) {
+    return;
+  }
+
+  if (!updateInfo?.isUpdateAvailable) {
+    updateBanner.hidden = true;
+    updateBanner.innerHTML = "";
+    return;
+  }
+
+  updateBanner.hidden = false;
+  updateBanner.innerHTML = `
+    <div>
+      <strong>Update available</strong>
+      <span>Version ${escapeHtml(updateInfo.latestVersion)} is available. You are using ${escapeHtml(
+        updateInfo.currentVersion
+      )}.</span>
+    </div>
+    <a href="${escapeAttribute(
+      updateInfo.downloadPageUrl
+    )}" target="_blank" rel="noopener noreferrer">Download update</a>
+  `;
 }
 
 function wireTabs() {

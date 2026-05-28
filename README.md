@@ -113,6 +113,14 @@ docs/downloads/cms-smartling-connector-firefox.zip
 
 The `docs/downloads` copies are what the landing page links to. If the internal server serves the `docs` folder, run `npm run build:extension` during deployment so the downloadable ZIPs are regenerated before users access the page.
 
+The build also creates:
+
+```text
+docs/release-info.json
+```
+
+The extension checks `{Backend URL}/release-info.json` and shows an update banner in the CMS panel and popup when the deployed version is newer than the installed extension version.
+
 ## Download Landing Page
 
 A static download page lives in:

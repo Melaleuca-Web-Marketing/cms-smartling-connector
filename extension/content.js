@@ -72,6 +72,8 @@ let panelCollapsed = true;
 let panelTheme = "light";
 let recentRequestsCollapsed = true;
 let activePanelSku = null;
+let extensionUpdateInfo = null;
+let updateCheckStarted = false;
 let recentRequestsState = {
   sku: null,
   requests: [],
@@ -87,6 +89,7 @@ async function init() {
   panelCollapsed = true;
   panelTheme = settings.panelTheme;
   recentRequestsCollapsed = settings.recentRequestsCollapsed;
+  checkForExtensionUpdates();
   scheduleScan();
 
   const observer = new MutationObserver(() => {
@@ -359,7 +362,8 @@ function ensurePanel() {
           ></button>
         </div>
       </div>
-    <div class="cms-smartling-body">Scanning CMS fields...</div>
+      <div class="cms-smartling-update-slot" id="cms-smartling-update-slot" hidden></div>
+      <div class="cms-smartling-body">Scanning CMS fields...</div>
     </div>
   `;
   document.body.append(panel);
@@ -382,6 +386,7 @@ function removePanel() {
 function setPanelCollapsed(collapsed) {
   panelCollapsed = collapsed;
   applyPanelShellState();
+  renderExtensionUpdateBanner();
 }
 
 function togglePanelTheme() {
@@ -413,6 +418,48 @@ function applyPanelShellState() {
       panelTheme === "dark" ? "Use light theme" : "Use dark theme"
     );
   }
+}
+
+async function checkForExtensionUpdates() {
+  if (updateCheckStarted || !globalThis.SmartlingVersionCheck) {
+    return;
+  }
+
+  updateCheckStarted = true;
+
+  try {
+    extensionUpdateInfo = await SmartlingVersionCheck.check(apiBaseUrl);
+  } catch {
+    extensionUpdateInfo = null;
+  }
+
+  renderExtensionUpdateBanner();
+}
+
+function renderExtensionUpdateBanner() {
+  const slot = document.getElementById("cms-smartling-update-slot");
+  if (!slot) return;
+
+  if (!extensionUpdateInfo?.isUpdateAvailable) {
+    slot.hidden = true;
+    slot.innerHTML = "";
+    return;
+  }
+
+  slot.hidden = false;
+  slot.innerHTML = `
+    <div class="cms-smartling-update-banner">
+      <div>
+        <strong>Update available</strong>
+        <span>Version ${escapeHtml(extensionUpdateInfo.latestVersion)} is available. You are using ${escapeHtml(
+          extensionUpdateInfo.currentVersion
+        )}.</span>
+      </div>
+      <a href="${escapeAttribute(
+        extensionUpdateInfo.downloadPageUrl
+      )}" target="_blank" rel="noopener noreferrer">Download update</a>
+    </div>
+  `;
 }
 
 function getLogoUrl() {
