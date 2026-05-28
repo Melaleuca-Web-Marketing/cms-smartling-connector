@@ -36,6 +36,28 @@ Default URL:
 http://127.0.0.1:17817
 ```
 
+Run it under `pm2`:
+
+```powershell
+npm run pm2:start
+pm2 save
+```
+
+To make the process come back after a machine reboot, enable the `pm2` systemd service once with:
+
+```powershell
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u brand --hp /home/brand
+```
+
+Useful follow-up commands:
+
+```powershell
+npm run pm2:restart
+npm run pm2:stop
+npm run pm2:logs
+pm2 status
+```
+
 Health check:
 
 ```text

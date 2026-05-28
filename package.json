@@ -9,6 +9,10 @@
     "build:firefox": "node scripts/build-extension.mjs firefox && node scripts/package-extension.mjs firefox && node scripts/generate-release-info.mjs",
     "package:extension": "npm run build:extension",
     "backend": "node --no-warnings=ExperimentalWarning --env-file=.env backend/server.mjs",
+    "pm2:start": "pm2 start ecosystem.config.cjs --update-env",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs --update-env",
+    "pm2:stop": "pm2 delete cms-smartling-connector",
+    "pm2:logs": "pm2 logs cms-smartling-connector",
     "check": "node --check backend/server.mjs && node --check backend/store.mjs && node --check backend/smartlingAdapter.mjs && node --check extension/content.js && node --check extension/popup.js && node --check scripts/build-extension.mjs && node --check scripts/package-extension.mjs && node --check scripts/generate-release-info.mjs"
   }
 }
