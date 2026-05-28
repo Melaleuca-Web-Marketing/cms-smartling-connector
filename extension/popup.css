@@ -128,7 +128,7 @@ h1 {
 
 .popup-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   border: 1px solid var(--sl-border);
   border-radius: 10px;
@@ -250,70 +250,6 @@ select {
 .custom-targets[hidden],
 .custom-targets.is-hidden {
   display: none !important;
-}
-
-.bulk-import {
-  display: grid;
-  gap: 8px;
-  border: 1px solid var(--sl-border);
-  border-radius: 8px;
-  padding: 9px;
-  background: var(--sl-surface);
-}
-
-.bulk-import-title {
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.bulk-import-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.button-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 34px;
-  border: 1px solid var(--sl-brand);
-  border-radius: 8px;
-  padding: 7px 11px;
-  background: var(--sl-brand);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-align: center;
-  text-decoration: none;
-}
-
-.button-link:hover {
-  border-color: var(--sl-brand-hover);
-  background: var(--sl-brand-hover);
-}
-
-.button-link.secondary {
-  background: var(--sl-bg);
-  color: var(--sl-brand);
-}
-
-.button-link.secondary:hover {
-  background: var(--sl-brand-soft);
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
 }
 
 .custom-target-grid {

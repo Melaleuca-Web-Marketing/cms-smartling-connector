@@ -14,14 +14,8 @@ const customProject = document.getElementById("customProject");
 const customEuTargets = document.getElementById("customEuTargets");
 const customDueDate = document.getElementById("customDueDate");
 const customAuthorize = document.getElementById("customAuthorize");
-const customBulkFile = document.getElementById("customBulkFile");
-const downloadCustomTemplate = document.getElementById("downloadCustomTemplate");
 const customStringList = document.getElementById("customStringList");
 const customJobList = document.getElementById("customJobList");
-
-if (downloadCustomTemplate && globalThis.chrome?.runtime?.getURL) {
-  downloadCustomTemplate.href = chrome.runtime.getURL("templates/custom-job-template.xlsx");
-}
 
 chrome.storage.local.get(
   {
@@ -53,7 +47,7 @@ document.getElementById("resetPanel").addEventListener("click", resetPanelState)
 document.getElementById("addCustomString").addEventListener("click", () => addCustomStringRow());
 document.getElementById("submitCustomJob").addEventListener("click", submitCustomJob);
 document.getElementById("refreshCustomJobs").addEventListener("click", loadCustomJobs);
-customBulkFile.addEventListener("change", importCustomStringsFromWorkbook);
+document.getElementById("openBulkImport").addEventListener("click", openBulkImportPage);
 customProject.addEventListener("change", () => {
   const project = getSelectedProject();
   customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
@@ -167,6 +161,9 @@ function wireTabs() {
   document.querySelectorAll(".tab-button").forEach((button) => {
     button.addEventListener("click", () => {
       const tab = button.dataset.tab;
+      if (!tab) {
+        return;
+      }
       document.querySelectorAll(".tab-button").forEach((item) => {
         item.classList.toggle("is-active", item === button);
       });
@@ -175,6 +172,18 @@ function wireTabs() {
       });
     });
   });
+}
+
+function openBulkImportPage() {
+  const url = globalThis.chrome?.runtime?.getURL
+    ? chrome.runtime.getURL("bulk-import.html")
+    : "bulk-import.html";
+  if (globalThis.chrome?.tabs?.create) {
+    chrome.tabs.create({ url });
+    return;
+  }
+
+  window.open(url, "_blank", "noopener");
 }
 
 function initCustomJobForm(draft = null) {
@@ -267,63 +276,6 @@ function saveCustomDraft() {
 function clearCustomDraft() {
   clearTimeout(draftSaveTimer);
   chrome.storage.local.remove(CUSTOM_DRAFT_STORAGE_KEY);
-}
-
-async function importCustomStringsFromWorkbook() {
-  const file = customBulkFile.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  try {
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      throw new Error("Choose an .xlsx file created from the custom job template.");
-    }
-
-    setStatus("Importing custom strings from workbook...");
-    const response = await fetch(`${getApiBaseUrl()}/api/custom-translation-requests/import-xlsx`, {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          file.type ||
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      },
-      body: file
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.error?.message || `Workbook import failed: ${response.status}`);
-    }
-
-    const importedFields = Array.isArray(data.fields) ? data.fields : [];
-    if (!importedFields.length) {
-      throw new Error("No source strings were found in the workbook.");
-    }
-
-    const hasExistingValues = getCustomFields().length > 0;
-    const replaceExisting =
-      !hasExistingValues ||
-      confirm("Replace the current custom strings with the imported workbook rows?");
-
-    if (replaceExisting) {
-      customStringList.innerHTML = "";
-    }
-
-    for (const field of importedFields) {
-      addCustomStringRow(field.label || "", field.value || "");
-    }
-
-    scheduleCustomDraftSave();
-    setStatus(
-      `Imported ${importedFields.length} string${importedFields.length === 1 ? "" : "s"} from ${file.name}.`,
-      "success"
-    );
-  } catch (error) {
-    setStatus(error.message, "error");
-  } finally {
-    customBulkFile.value = "";
-  }
 }
 
 function getCustomDraft() {

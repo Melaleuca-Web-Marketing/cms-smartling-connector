@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>CMS Smartling Bulk Import</title>
+    <link rel="stylesheet" href="bulk-import.css">
+  </head>
+  <body>
+    <main class="bulk-shell">
+      <header class="bulk-header">
+        <div class="bulk-brand">
+          <img src="smartling_logo.png" alt="" class="bulk-logo">
+          <div>
+            <h1>Bulk Import</h1>
+            <p>Review custom-job strings from an Excel template before sending to Smartling.</p>
+          </div>
+        </div>
+        <a class="secondary-link" id="downloadTemplate" href="templates/custom-job-template.xlsx" download>
+          Download template
+        </a>
+      </header>
+
+      <div class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden></div>
+
+      <section class="toolbar-card">
+        <div class="form-grid">
+          <label>
+            <span>Job name</span>
+            <input id="bulkJobName" type="text" spellcheck="false">
+          </label>
+          <label>
+            <span>Project</span>
+            <select id="bulkProject">
+              <option value="us">US | en-US to Spanish</option>
+              <option value="ca">Canada | en-CA to French</option>
+              <option value="eu">EU | en-IE to selected languages</option>
+            </select>
+          </label>
+          <label>
+            <span>Due date</span>
+            <input id="bulkDueDate" type="datetime-local" required>
+          </label>
+          <label class="check-row" for="bulkAuthorize">
+            <input id="bulkAuthorize" type="checkbox" checked>
+            <span>Authorize job after submission</span>
+          </label>
+        </div>
+
+        <div class="target-panel" id="bulkEuTargets" hidden>
+          <div class="section-title">
+            <h2>EU Target Languages</h2>
+          </div>
+          <div class="target-grid">
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="nl-NL" checked>
+              <span>Netherlands | nl-NL</span>
+            </label>
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="de-DE" checked>
+              <span>Germany | de-DE</span>
+            </label>
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="de-AT" checked>
+              <span>Austria | de-AT</span>
+            </label>
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="pl-PL" checked>
+              <span>Poland | pl-PL</span>
+            </label>
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="lt-LT" checked>
+              <span>Lithuania | lt-LT</span>
+            </label>
+            <label class="target-option">
+              <input class="bulk-target-check" type="checkbox" value="it-IT" checked>
+              <span>Italy | it-IT</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="import-card">
+        <div>
+          <h2>Workbook Import</h2>
+          <p>Upload the completed template. Imported rows can be edited or removed before submission.</p>
+        </div>
+        <div class="import-actions">
+          <label class="primary-button" for="bulkFile">Import XLSX</label>
+          <input id="bulkFile" class="visually-hidden" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+          <button id="addRow" type="button" class="secondary-button">Add row</button>
+          <button id="removeBlankRows" type="button" class="secondary-button">Remove blanks</button>
+          <button id="clearRows" type="button" class="danger-button">Clear</button>
+        </div>
+      </section>
+
+      <section class="review-card">
+        <div class="review-header">
+          <div>
+            <h2>Review Strings</h2>
+            <p id="rowSummary">No strings imported yet.</p>
+          </div>
+          <button id="submitBulkJob" type="button" class="primary-button">Send Bulk Job</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="row-num">#</th>
+                <th>Custom label</th>
+                <th>Source string</th>
+                <th class="row-action">Action</th>
+              </tr>
+            </thead>
+            <tbody id="bulkRows">
+              <tr class="empty-row">
+                <td colspan="4">Import a workbook or add rows manually.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="versionCheck.js"></script>
+    <script src="bulk-import.js"></script>
+  </body>
+</html>

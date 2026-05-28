@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -38,6 +38,8 @@ for (const target of selectedTargets) {
   const landingZipPath = join(landingDownloadDir, versionedFileName);
   const stableLandingZipPath = join(landingDownloadDir, stableFileName);
 
+  await removeExistingTargetPackages(packageDir, target);
+  await removeExistingTargetPackages(landingDownloadDir, target);
   await rm(zipPath, {
     force: true
   });
@@ -95,6 +97,21 @@ function getVersionedFileName(target) {
     return getStableFileName(target);
   }
   return `cms-smartling-connector-${target}-v${version}.zip`;
+}
+
+async function removeExistingTargetPackages(directory, target) {
+  const prefix = `cms-smartling-connector-${target}-v`;
+  const entries = await readdir(directory, {
+    withFileTypes: true
+  });
+
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith(".zip")) {
+      await rm(join(directory, entry.name), {
+        force: true
+      });
+    }
+  }
 }
 
 function psString(value) {

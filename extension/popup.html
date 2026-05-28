@@ -19,6 +19,7 @@
 
       <nav class="popup-tabs" aria-label="Popup sections">
         <button class="tab-button is-active" type="button" data-tab="custom">Custom Job</button>
+        <button class="tab-button" type="button" id="openBulkImport">Bulk Import</button>
         <button class="tab-button" type="button" data-tab="settings">Settings</button>
       </nav>
 
@@ -89,19 +90,6 @@
           <p class="small-note">
             Use the first box as a label for where the string belongs. Put the actual source copy to translate in the larger box.
           </p>
-          <div class="bulk-import">
-            <div>
-              <div class="bulk-import-title">Bulk import</div>
-              <p class="small-note">Download the Excel template, fill the Strings sheet, then import it here.</p>
-            </div>
-            <div class="bulk-import-actions">
-              <a id="downloadCustomTemplate" class="button-link secondary" href="templates/custom-job-template.xlsx" download>
-                Download template
-              </a>
-              <label class="button-link" for="customBulkFile">Import XLSX</label>
-              <input id="customBulkFile" class="visually-hidden" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-            </div>
-          </div>
           <div class="custom-string-list" id="customStringList"></div>
 
           <button id="submitCustomJob" type="button" class="full-width">Send Custom Job</button>

@@ -185,6 +185,8 @@ Custom jobs support:
 - Bulk import from the bundled Excel template at `extension/templates/custom-job-template.xlsx`.
 - Recent custom job history and manual translation checks.
 
+The popup keeps manual custom jobs compact. The `Bulk Import` popup button opens a full extension page for XLSX uploads, larger table review, row edits, and bulk submission.
+
 The popup submits custom jobs through:
 
 ```text
