@@ -180,6 +180,7 @@ Custom jobs support:
 - EU target language checkboxes for `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
 - Job due date and authorize-job controls.
 - One or more labeled source strings.
+- Bulk import from the bundled Excel template at `extension/templates/custom-job-template.xlsx`.
 - Recent custom job history and manual translation checks.
 
 The popup submits custom jobs through:
@@ -192,6 +193,12 @@ Recent custom jobs are read through:
 
 ```text
 GET /api/custom-translation-requests
+```
+
+Bulk custom-job workbooks are parsed through:
+
+```text
+POST /api/custom-translation-requests/import-xlsx
 ```
 
 Published translations are checked through the same import endpoint used by SKU requests:

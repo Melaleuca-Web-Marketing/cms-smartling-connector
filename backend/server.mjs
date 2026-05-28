@@ -6,6 +6,7 @@ import {
   getSmartlingRuntimeStatus
 } from "./smartlingAdapter.mjs";
 import { getStoreInfo, loadStore, saveStore } from "./store.mjs";
+import { parseCustomJobWorkbook } from "./xlsxImport.mjs";
 
 const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
@@ -157,6 +158,21 @@ async function readJsonBody(req) {
   }
 
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+async function readBinaryBody(req, maxBytes = 5 * 1024 * 1024) {
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxBytes) {
+      throw new Error("Uploaded file is too large.");
+    }
+    chunks.push(chunk);
+  }
+
+  return Buffer.concat(chunks);
 }
 
 function normalizeLabel(label) {
@@ -558,6 +574,26 @@ async function handleCreateCustomRequest(req, res) {
   });
 }
 
+async function handleImportCustomWorkbook(req, res) {
+  const workbook = await readBinaryBody(req);
+
+  if (!workbook.length) {
+    return sendError(res, 400, "Upload an XLSX file before importing strings.");
+  }
+
+  const importResult = parseCustomJobWorkbook(workbook);
+
+  if (!importResult.fields.length) {
+    return sendError(
+      res,
+      400,
+      "No source strings were found. Use the template columns Custom label and Source string."
+    );
+  }
+
+  return sendJson(res, 200, importResult);
+}
+
 async function submitRequestToSmartling(request) {
   try {
     const smartling = await createSmartlingJob(request);
@@ -929,6 +965,10 @@ async function handleRequest(req, res) {
 
     if (req.method === "POST" && pathname === "/api/custom-translation-requests") {
       return await handleCreateCustomRequest(req, res);
+    }
+
+    if (req.method === "POST" && pathname === "/api/custom-translation-requests/import-xlsx") {
+      return await handleImportCustomWorkbook(req, res);
     }
 
     if (req.method === "GET" && pathname === "/api/custom-translation-requests") {
