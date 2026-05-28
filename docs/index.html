@@ -31,10 +31,10 @@
           </div>
         </div>
         <div class="download-actions">
-          <a class="primary-link" href="downloads/cms-smartling-connector-chromium.zip">
+          <a class="primary-link" id="downloadChromium" href="downloads/cms-smartling-connector-chromium.zip">
             Download Chrome/Edge ZIP
           </a>
-          <a class="secondary-link" href="downloads/cms-smartling-connector-firefox.zip">
+          <a class="secondary-link" id="downloadFirefox" href="downloads/cms-smartling-connector-firefox.zip">
             Download Firefox ZIP
           </a>
         </div>
@@ -94,6 +94,8 @@
     <script>
       const releaseSummary = document.getElementById("releaseSummary");
       const changeList = document.getElementById("changeList");
+      const downloadChromium = document.getElementById("downloadChromium");
+      const downloadFirefox = document.getElementById("downloadFirefox");
 
       fetch("release-info.json", { cache: "no-store" })
         .then((response) => {
@@ -105,6 +107,7 @@
         })
         .then((releaseInfo) => {
           renderReleaseSummary(releaseInfo);
+          renderDownloadLinks(releaseInfo);
           renderChangeList(releaseInfo.changes || []);
         })
         .catch((error) => {
@@ -126,6 +129,32 @@
           <span class="release-badge">Version ${escapeHtml(releaseInfo.version || "unknown")}</span>
           <span class="release-meta">${publishedText}</span>
         `;
+      }
+
+      function renderDownloadLinks(releaseInfo) {
+        const version = String(releaseInfo.version || "").trim();
+        const chromiumHref =
+          releaseInfo.downloads?.chromium ||
+          (version ? `downloads/cms-smartling-connector-chromium-v${encodeURIComponent(version)}.zip` : "");
+        const firefoxHref =
+          releaseInfo.downloads?.firefox ||
+          (version ? `downloads/cms-smartling-connector-firefox-v${encodeURIComponent(version)}.zip` : "");
+
+        if (chromiumHref) {
+          downloadChromium.href = chromiumHref;
+          downloadChromium.setAttribute(
+            "download",
+            chromiumHref.split("/").pop() || "cms-smartling-connector-chromium.zip"
+          );
+        }
+
+        if (firefoxHref) {
+          downloadFirefox.href = firefoxHref;
+          downloadFirefox.setAttribute(
+            "download",
+            firefoxHref.split("/").pop() || "cms-smartling-connector-firefox.zip"
+          );
+        }
       }
 
       function renderChangeList(changes) {

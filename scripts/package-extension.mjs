@@ -1,4 +1,4 @@
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const packageDir = join(rootDir, "dist", "packages");
 const landingDownloadDir = join(rootDir, "docs", "downloads");
+const packageJson = JSON.parse(await readFile(join(rootDir, "package.json"), "utf8"));
+const version = String(packageJson.version || "").trim();
 const targets = {
   chromium: true,
   firefox: true
@@ -29,13 +31,23 @@ await mkdir(landingDownloadDir, {
 
 for (const target of selectedTargets) {
   const sourceDir = join(rootDir, "dist", target);
-  const zipPath = join(packageDir, `cms-smartling-connector-${target}.zip`);
-  const landingZipPath = join(landingDownloadDir, `cms-smartling-connector-${target}.zip`);
+  const stableFileName = getStableFileName(target);
+  const versionedFileName = getVersionedFileName(target);
+  const zipPath = join(packageDir, versionedFileName);
+  const stableZipPath = join(packageDir, stableFileName);
+  const landingZipPath = join(landingDownloadDir, versionedFileName);
+  const stableLandingZipPath = join(landingDownloadDir, stableFileName);
 
   await rm(zipPath, {
     force: true
   });
+  await rm(stableZipPath, {
+    force: true
+  });
   await rm(landingZipPath, {
+    force: true
+  });
+  await rm(stableLandingZipPath, {
     force: true
   });
 
@@ -66,8 +78,23 @@ for (const target of selectedTargets) {
   }
 
   console.log(`Packaged ${target} extension at ${relative(rootDir, zipPath)}`);
+  await copyFile(zipPath, stableZipPath);
+  console.log(`Updated stable package alias at ${relative(rootDir, stableZipPath)}`);
   await copyFile(zipPath, landingZipPath);
   console.log(`Updated landing page download at ${relative(rootDir, landingZipPath)}`);
+  await copyFile(zipPath, stableLandingZipPath);
+  console.log(`Updated stable landing page alias at ${relative(rootDir, stableLandingZipPath)}`);
+}
+
+function getStableFileName(target) {
+  return `cms-smartling-connector-${target}.zip`;
+}
+
+function getVersionedFileName(target) {
+  if (!version) {
+    return getStableFileName(target);
+  }
+  return `cms-smartling-connector-${target}-v${version}.zip`;
 }
 
 function psString(value) {

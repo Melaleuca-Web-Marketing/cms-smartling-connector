@@ -15,6 +15,10 @@ const payload = {
   name: packageJson.name,
   version: packageJson.version,
   generatedAt: new Date().toISOString(),
+  downloads: {
+    chromium: `downloads/cms-smartling-connector-chromium-v${packageJson.version}.zip`,
+    firefox: `downloads/cms-smartling-connector-firefox-v${packageJson.version}.zip`
+  },
   changes: recentChanges
 };
 

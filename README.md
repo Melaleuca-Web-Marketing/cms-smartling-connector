@@ -105,13 +105,13 @@ docs/downloads/*.zip
 The build/package scripts create:
 
 ```text
-dist/packages/cms-smartling-connector-chromium.zip
-dist/packages/cms-smartling-connector-firefox.zip
-docs/downloads/cms-smartling-connector-chromium.zip
-docs/downloads/cms-smartling-connector-firefox.zip
+dist/packages/cms-smartling-connector-chromium-v{version}.zip
+dist/packages/cms-smartling-connector-firefox-v{version}.zip
+docs/downloads/cms-smartling-connector-chromium-v{version}.zip
+docs/downloads/cms-smartling-connector-firefox-v{version}.zip
 ```
 
-The `docs/downloads` copies are what the landing page links to. If the internal server serves the `docs` folder, run `npm run build:extension` during deployment so the downloadable ZIPs are regenerated before users access the page.
+The script also refreshes stable alias filenames without the version number for backwards compatibility. The `docs/downloads` copies are what the landing page links to. If the internal server serves the `docs` folder, run `npm run build:extension` during deployment so the downloadable ZIPs are regenerated before users access the page.
 
 The build also creates:
 
@@ -135,6 +135,8 @@ It links to expected ZIP files on the same internal web server:
 downloads/cms-smartling-connector-chromium.zip
 downloads/cms-smartling-connector-firefox.zip
 ```
+
+After `release-info.json` loads, the page updates those links to the versioned ZIP filenames for the current release.
 
 This should be copied to an internal static site or web server.
 

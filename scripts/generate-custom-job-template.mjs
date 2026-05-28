@@ -52,7 +52,7 @@ function rootRelationshipsXml() {
 }
 
 function corePropertiesXml() {
-  const createdAt = new Date().toISOString();
+  const createdAt = "2026-01-01T00:00:00.000Z";
   return xml(
     `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <dc:title>CMS Smartling Custom Job Template</dc:title>

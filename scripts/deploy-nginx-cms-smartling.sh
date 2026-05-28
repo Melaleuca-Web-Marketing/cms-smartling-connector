@@ -48,12 +48,8 @@ deploy_docs() {
   install -m 0644 "${DOCS_SRC_DIR}/styles.css" "${DOCS_DST_DIR}/styles.css"
   install -m 0644 "${RELEASE_INFO_SRC}" "${DOCS_DST_DIR}/release-info.json"
   install -m 0644 "${DOCS_SRC_DIR}/assets/smartling_logo.png" "${DOCS_DST_DIR}/assets/smartling_logo.png"
-  install -m 0644 \
-    "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-chromium.zip" \
-    "${DOCS_DST_DIR}/downloads/cms-smartling-connector-chromium.zip"
-  install -m 0644 \
-    "${DOWNLOADS_SRC_DIR}/cms-smartling-connector-firefox.zip" \
-    "${DOCS_DST_DIR}/downloads/cms-smartling-connector-firefox.zip"
+  find "${DOCS_DST_DIR}/downloads" -maxdepth 1 -type f -name 'cms-smartling-connector-*.zip' -delete
+  find "${DOWNLOADS_SRC_DIR}" -maxdepth 1 -type f -name 'cms-smartling-connector-*.zip' -exec install -m 0644 {} "${DOCS_DST_DIR}/downloads/" \;
 }
 
 deploy_nginx_config() {
