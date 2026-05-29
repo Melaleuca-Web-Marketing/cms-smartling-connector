@@ -73,6 +73,7 @@ customProject.addEventListener("change", () => {
   renderProjectTargetControls(project);
   scheduleCustomDraftSave();
 });
+customJobPrefix.addEventListener("input", scheduleCustomDraftSave);
 customJobName.addEventListener("input", scheduleCustomDraftSave);
 customJobSuffix.addEventListener("input", scheduleCustomDraftSave);
 customDueDate.addEventListener("input", scheduleCustomDraftSave);
@@ -216,7 +217,7 @@ function openBulkImportPage() {
 
 function initCustomJobForm(draft = null) {
   restoringDraft = true;
-  customJobPrefix.value = formatCompactDate(new Date());
+  setDefaultCustomJobNameParts();
   customDueDate.value = getDefaultDueDateLocalValue(
     getSelectedProject().sourceLocale,
   );
@@ -264,7 +265,8 @@ function addCustomStringRow(label = "", value = "") {
 
 function restoreCustomDraft(draft) {
   customProject.value = draft.project || "us";
-  customJobName.value = draft.jobName || "";
+  customJobPrefix.value = draft.jobPrefix || formatCompactDate(new Date());
+  customJobName.value = draft.jobName || "Custom";
   customJobSuffix.value = draft.jobSuffix || "";
   customAuthorize.checked = draft.authorizeJob !== false;
   restoreEuTargets(draft.euTargets);
@@ -317,6 +319,7 @@ function getCustomDraft() {
   return {
     savedAt: new Date().toISOString(),
     project: customProject.value,
+    jobPrefix: customJobPrefix.value,
     jobName: customJobName.value,
     jobSuffix: customJobSuffix.value,
     jobDueDateLocal: customDueDate.value,
@@ -386,7 +389,7 @@ async function submitCustomJob() {
       ),
       "success",
     );
-    customJobName.value = buildDefaultCustomJobName();
+    setDefaultCustomJobNameParts();
     customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
     customStringList.innerHTML = "";
     addCustomStringRow("", "");
@@ -715,8 +718,18 @@ function setStatus(message, state = "muted") {
 function buildDefaultCustomJobName(date = new Date()) {
   return `${formatCompactDate(date)}-Custom`;
 }
+
+function setDefaultCustomJobNameParts(date = new Date()) {
+  customJobPrefix.value = formatCompactDate(date);
+  customJobName.value = "Custom";
+  customJobSuffix.value = "";
+}
+
 function buildCustomJobName() {
-  return `${customJobPrefix.value}-${customJobName.value}-${customJobSuffix.value}`;
+  return [customJobPrefix.value, customJobName.value, customJobSuffix.value]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("-");
 }
 
 function getDefaultDueDateLocalValue(sourceLocale) {

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CMS Smartling Assistant",
   "description": "Stages Smartling product-copy requests and inserts returned translations into CMS fields.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "permissions": ["storage"],
   "icons": {
     "16": "icons/icon16.png",
