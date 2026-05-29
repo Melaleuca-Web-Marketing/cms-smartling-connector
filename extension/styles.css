@@ -398,7 +398,9 @@
   transform: rotate(-45deg);
 }
 
-#cms-smartling-panel .cms-smartling-disclosure[aria-expanded="true"] .cms-smartling-disclosure-icon::before {
+#cms-smartling-panel
+  .cms-smartling-disclosure[aria-expanded="true"]
+  .cms-smartling-disclosure-icon::before {
   left: 5px;
   top: 3px;
   transform: rotate(45deg);
@@ -519,17 +521,23 @@
   -webkit-text-fill-color: #0f172a;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-info .cms-smartling-request-progress-badge {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-info
+  .cms-smartling-request-progress-badge {
   color: #1e3a8a !important;
   -webkit-text-fill-color: #1e3a8a;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-success .cms-smartling-request-progress-badge {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-success
+  .cms-smartling-request-progress-badge {
   color: #166534 !important;
   -webkit-text-fill-color: #166534;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-error .cms-smartling-request-progress-badge {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-error
+  .cms-smartling-request-progress-badge {
   color: #991b1b !important;
   -webkit-text-fill-color: #991b1b;
 }
@@ -609,7 +617,9 @@
   -webkit-text-fill-color: #1e3a8a;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-info .cms-smartling-request-feedback-message {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-info
+  .cms-smartling-request-feedback-message {
   color: #1e3a8a !important;
   -webkit-text-fill-color: #1e3a8a;
 }
@@ -621,7 +631,9 @@
   -webkit-text-fill-color: #166534;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-success .cms-smartling-request-feedback-message {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-success
+  .cms-smartling-request-feedback-message {
   color: #14532d !important;
   -webkit-text-fill-color: #14532d;
 }
@@ -633,19 +645,24 @@
   -webkit-text-fill-color: #991b1b;
 }
 
-#cms-smartling-panel .cms-smartling-request-feedback.is-error .cms-smartling-request-feedback-message {
+#cms-smartling-panel
+  .cms-smartling-request-feedback.is-error
+  .cms-smartling-request-feedback-message {
   color: #991b1b !important;
   -webkit-text-fill-color: #991b1b;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-info {
   border-color: rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.12);
   color: #bfdbfe !important;
   -webkit-text-fill-color: #bfdbfe;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info .cms-smartling-request-feedback-message {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-info
+  .cms-smartling-request-feedback-message {
   color: #dbeafe !important;
   -webkit-text-fill-color: #dbeafe;
 }
@@ -654,69 +671,85 @@
   background: rgba(15, 23, 42, 0.42);
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-pending {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-field-progress-pill.is-pending {
   border-color: rgba(148, 163, 184, 0.34);
   background: rgba(148, 163, 184, 0.1);
   color: #cbd5e1 !important;
   -webkit-text-fill-color: #cbd5e1;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-progress {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-field-progress-pill.is-progress {
   border-color: rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.12);
   color: #dbeafe !important;
   -webkit-text-fill-color: #dbeafe;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-ready {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-field-progress-pill.is-ready {
   border-color: rgba(34, 197, 94, 0.35);
   background: rgba(34, 197, 94, 0.12);
   color: #dcfce7 !important;
   -webkit-text-fill-color: #dcfce7;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-field-progress-pill.is-error {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-field-progress-pill.is-error {
   border-color: rgba(248, 113, 113, 0.35);
   background: rgba(248, 113, 113, 0.12);
   color: #fee2e2 !important;
   -webkit-text-fill-color: #fee2e2;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-info .cms-smartling-request-progress-badge {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-info
+  .cms-smartling-request-progress-badge {
   color: #dbeafe !important;
   -webkit-text-fill-color: #dbeafe;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-success {
   border-color: rgba(34, 197, 94, 0.35);
   background: rgba(34, 197, 94, 0.12);
   color: #bbf7d0 !important;
   -webkit-text-fill-color: #bbf7d0;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success .cms-smartling-request-feedback-message {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-success
+  .cms-smartling-request-feedback-message {
   color: #dcfce7 !important;
   -webkit-text-fill-color: #dcfce7;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-success .cms-smartling-request-progress-badge {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-success
+  .cms-smartling-request-progress-badge {
   color: #dcfce7 !important;
   -webkit-text-fill-color: #dcfce7;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-error {
   border-color: rgba(248, 113, 113, 0.35);
   background: rgba(248, 113, 113, 0.12);
   color: #fecaca !important;
   -webkit-text-fill-color: #fecaca;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error .cms-smartling-request-feedback-message {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-error
+  .cms-smartling-request-feedback-message {
   color: #fee2e2 !important;
   -webkit-text-fill-color: #fee2e2;
 }
 
-#cms-smartling-panel[data-theme="dark"] .cms-smartling-request-feedback.is-error .cms-smartling-request-progress-badge {
+#cms-smartling-panel[data-theme="dark"]
+  .cms-smartling-request-feedback.is-error
+  .cms-smartling-request-progress-badge {
   color: #fee2e2 !important;
   -webkit-text-fill-color: #fee2e2;
 }
