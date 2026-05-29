@@ -73,7 +73,6 @@ customProject.addEventListener("change", () => {
   renderProjectTargetControls(project);
   scheduleCustomDraftSave();
 });
-customJobPrefix.addEventListener("input", scheduleCustomDraftSave);
 customJobName.addEventListener("input", scheduleCustomDraftSave);
 customJobSuffix.addEventListener("input", scheduleCustomDraftSave);
 customDueDate.addEventListener("input", scheduleCustomDraftSave);
@@ -265,8 +264,8 @@ function addCustomStringRow(label = "", value = "") {
 
 function restoreCustomDraft(draft) {
   customProject.value = draft.project || "us";
-  customJobPrefix.value = draft.jobPrefix || formatCompactDate(new Date());
-  customJobName.value = draft.jobName || "Custom";
+  customJobPrefix.value = formatCompactDate(new Date());
+  customJobName.value = getDraftJobName(draft);
   customJobSuffix.value = draft.jobSuffix || "";
   customAuthorize.checked = draft.authorizeJob !== false;
   restoreEuTargets(draft.euTargets);
@@ -319,7 +318,6 @@ function getCustomDraft() {
   return {
     savedAt: new Date().toISOString(),
     project: customProject.value,
-    jobPrefix: customJobPrefix.value,
     jobName: customJobName.value,
     jobSuffix: customJobSuffix.value,
     jobDueDateLocal: customDueDate.value,
@@ -725,8 +723,15 @@ function setDefaultCustomJobNameParts(date = new Date()) {
   customJobSuffix.value = "";
 }
 
-function buildCustomJobName() {
-  return [customJobPrefix.value, customJobName.value, customJobSuffix.value]
+function getDraftJobName(draft) {
+  const draftJobName = String(draft.jobName || "").trim();
+  return draftJobName.replace(/^\d{8}-/, "") || "Custom";
+}
+
+function buildCustomJobName(date = new Date()) {
+  const submitDatePrefix = formatCompactDate(date);
+  customJobPrefix.value = submitDatePrefix;
+  return [submitDatePrefix, customJobName.value, customJobSuffix.value]
     .map((part) => part.trim())
     .filter(Boolean)
     .join("-");

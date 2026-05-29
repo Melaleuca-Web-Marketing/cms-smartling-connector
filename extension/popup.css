@@ -211,6 +211,12 @@ textarea:focus {
   box-shadow: 0 0 0 3px var(--sl-ring);
 }
 
+input[readonly] {
+  background: var(--sl-surface-strong);
+  color: var(--sl-muted);
+  cursor: default;
+}
+
 .jobTitle {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
