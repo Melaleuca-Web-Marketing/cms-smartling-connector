@@ -11,6 +11,7 @@ import { parseCustomJobWorkbook } from "./xlsxImport.mjs";
 const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
 const HOST = env.HOST || "127.0.0.1";
+const MAX_SMARTLING_JOB_DESCRIPTION_LENGTH = 8000;
 
 const FIELD_CONFIG = {
   productName: {
@@ -180,6 +181,10 @@ function normalizeLabel(label) {
     .replace(/:$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeOptionalText(value) {
+  return String(value ?? "").replace(/\r\n/g, "\n").trim();
 }
 
 function fieldKeyFromLabel(label) {
@@ -493,6 +498,10 @@ async function handleCreateCustomRequest(req, res) {
   const route = findRouteBySource(null, sourceLocale, targetLocale);
   const requestedJobName = String(body.jobName || "").trim();
   const requestedJobDueDate = normalizeJobDueDate(body.jobDueDate || body.dueDate);
+  const jobDescription = normalizeOptionalText(
+    body.jobDescription || body.description || body.additionalDetails
+  );
+  const referenceNumber = normalizeOptionalText(body.referenceNumber || body.jobReferenceNumber);
   const authorizeJob = body.authorizeJob === true;
 
   if (!route) {
@@ -507,6 +516,14 @@ async function handleCreateCustomRequest(req, res) {
 
   if (!requestedJobDueDate) {
     return sendError(res, 400, "Missing or invalid job due date.");
+  }
+
+  if (jobDescription.length > MAX_SMARTLING_JOB_DESCRIPTION_LENGTH) {
+    return sendError(
+      res,
+      400,
+      `Additional details must be ${MAX_SMARTLING_JOB_DESCRIPTION_LENGTH} characters or fewer.`
+    );
   }
 
   const requestId = `tr_${randomUUID()}`;
@@ -548,6 +565,8 @@ async function handleCreateCustomRequest(req, res) {
     smartlingTargetLocale: route.smartlingTargetLocale,
     jobName,
     jobDueDate: requestedJobDueDate,
+    jobDescription,
+    referenceNumber,
     authorizeJob,
     fileUri: buildCustomFileUri(route, jobName, requestId),
     fields

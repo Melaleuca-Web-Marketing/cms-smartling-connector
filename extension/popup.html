@@ -30,6 +30,9 @@
         <button class="tab-button" type="button" id="openBulkImport">
           Bulk Import
         </button>
+        <button class="tab-button" type="button" id="openRecentJobs">
+          Recent Jobs
+        </button>
         <button class="tab-button" type="button" data-tab="settings">
           Settings
         </button>
@@ -67,6 +70,22 @@
             <label>
               <span>Due date</span>
               <input id="customDueDate" type="datetime-local" required />
+            </label>
+          </div>
+
+          <div class="custom-job-details">
+            <label>
+              <span>Reference number</span>
+              <input id="customReferenceNumber" type="text" spellcheck="false" />
+            </label>
+            <label>
+              <span>Additional details</span>
+              <textarea
+                id="customJobDescription"
+                rows="3"
+                maxlength="8000"
+                placeholder="Optional notes or design reference link for translators"
+              ></textarea>
             </label>
           </div>
 
@@ -152,18 +171,6 @@
           <button id="submitCustomJob" type="button" class="full-width">
             Send Custom Job
           </button>
-        </section>
-
-        <section class="popup-card">
-          <div class="section-title">
-            <h2>Recent Custom Jobs</h2>
-            <button id="refreshCustomJobs" type="button" class="text-button">
-              Refresh
-            </button>
-          </div>
-          <div class="custom-job-list" id="customJobList">
-            <div class="empty-state">No custom jobs loaded yet.</div>
-          </div>
         </section>
       </section>
 

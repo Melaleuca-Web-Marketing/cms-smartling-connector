@@ -8,6 +8,8 @@ let restoringDraft = false;
 const bulkJobName = document.getElementById("bulkJobName");
 const bulkProject = document.getElementById("bulkProject");
 const bulkDueDate = document.getElementById("bulkDueDate");
+const bulkReferenceNumber = document.getElementById("bulkReferenceNumber");
+const bulkJobDescription = document.getElementById("bulkJobDescription");
 const bulkAuthorize = document.getElementById("bulkAuthorize");
 const bulkEuTargets = document.getElementById("bulkEuTargets");
 const bulkFile = document.getElementById("bulkFile");
@@ -45,6 +47,8 @@ bulkProject.addEventListener("change", () => {
 });
 bulkJobName.addEventListener("input", scheduleDraftSave);
 bulkDueDate.addEventListener("input", scheduleDraftSave);
+bulkReferenceNumber.addEventListener("input", scheduleDraftSave);
+bulkJobDescription.addEventListener("input", scheduleDraftSave);
 bulkAuthorize.addEventListener("change", scheduleDraftSave);
 document.querySelectorAll(".bulk-target-check").forEach((input) => {
   input.addEventListener("change", scheduleDraftSave);
@@ -106,6 +110,8 @@ function initBulkPage(draft) {
   bulkJobName.value = buildDefaultCustomJobName();
   bulkProject.value = "us";
   bulkDueDate.value = getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
+  bulkReferenceNumber.value = "";
+  bulkJobDescription.value = "";
   bulkAuthorize.checked = true;
 
   if (draft) {
@@ -122,6 +128,8 @@ function restoreDraft(draft) {
   bulkProject.value = draft.project || "us";
   bulkDueDate.value =
     draft.jobDueDateLocal || getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
+  bulkReferenceNumber.value = draft.referenceNumber || "";
+  bulkJobDescription.value = draft.jobDescription || "";
   bulkAuthorize.checked = draft.authorizeJob !== false;
   rows = Array.isArray(draft.rows) ? draft.rows : [];
 
@@ -250,6 +258,8 @@ async function submitBulkImport() {
             targetLocale: route.targetLocale,
             jobName,
             jobDueDate,
+            referenceNumber: bulkReferenceNumber.value.trim(),
+            jobDescription: bulkJobDescription.value.trim(),
             authorizeJob: bulkAuthorize.checked,
             fields
           })
@@ -407,6 +417,8 @@ function saveDraft() {
       euTargets: getSelectedEuTargetLocales(),
       jobDueDateLocal: bulkDueDate.value,
       jobName: bulkJobName.value,
+      referenceNumber: bulkReferenceNumber.value,
+      jobDescription: bulkJobDescription.value,
       project: bulkProject.value,
       rows,
       savedAt: new Date().toISOString()

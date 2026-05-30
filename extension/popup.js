@@ -13,12 +13,13 @@ const updateBanner = document.getElementById("updateBanner");
 const customJobPrefix = document.getElementById("customJobPrefix");
 const customJobName = document.getElementById("customJobName");
 const customJobSuffix = document.getElementById("customJobSuffix");
+const customReferenceNumber = document.getElementById("customReferenceNumber");
+const customJobDescription = document.getElementById("customJobDescription");
 const customProject = document.getElementById("customProject");
 const customEuTargets = document.getElementById("customEuTargets");
 const customDueDate = document.getElementById("customDueDate");
 const customAuthorize = document.getElementById("customAuthorize");
 const customStringList = document.getElementById("customStringList");
-const customJobList = document.getElementById("customJobList");
 
 chrome.storage.local.get(
   {
@@ -62,11 +63,11 @@ document
   .getElementById("submitCustomJob")
   .addEventListener("click", submitCustomJob);
 document
-  .getElementById("refreshCustomJobs")
-  .addEventListener("click", loadCustomJobs);
-document
   .getElementById("openBulkImport")
   .addEventListener("click", openBulkImportPage);
+document
+  .getElementById("openRecentJobs")
+  .addEventListener("click", openRecentJobsPage);
 customProject.addEventListener("change", () => {
   const project = getSelectedProject();
   customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
@@ -75,6 +76,8 @@ customProject.addEventListener("change", () => {
 });
 customJobName.addEventListener("input", scheduleCustomDraftSave);
 customJobSuffix.addEventListener("input", scheduleCustomDraftSave);
+customReferenceNumber.addEventListener("input", scheduleCustomDraftSave);
+customJobDescription.addEventListener("input", scheduleCustomDraftSave);
 customDueDate.addEventListener("input", scheduleCustomDraftSave);
 customAuthorize.addEventListener("change", scheduleCustomDraftSave);
 document.querySelectorAll(".custom-target-check").forEach((inputElement) => {
@@ -214,6 +217,18 @@ function openBulkImportPage() {
   window.open(url, "_blank", "noopener");
 }
 
+function openRecentJobsPage() {
+  const url = globalThis.chrome?.runtime?.getURL
+    ? chrome.runtime.getURL("recent-jobs.html")
+    : "recent-jobs.html";
+  if (globalThis.chrome?.tabs?.create) {
+    chrome.tabs.create({ url });
+    return;
+  }
+
+  window.open(url, "_blank", "noopener");
+}
+
 function initCustomJobForm(draft = null) {
   restoringDraft = true;
   setDefaultCustomJobNameParts();
@@ -231,7 +246,6 @@ function initCustomJobForm(draft = null) {
   }
 
   restoringDraft = false;
-  loadCustomJobs();
 }
 
 function addCustomStringRow(label = "", value = "") {
@@ -267,6 +281,8 @@ function restoreCustomDraft(draft) {
   customJobPrefix.value = formatCompactDate(new Date());
   customJobName.value = getDraftJobName(draft);
   customJobSuffix.value = draft.jobSuffix || "";
+  customReferenceNumber.value = draft.referenceNumber || "";
+  customJobDescription.value = draft.jobDescription || "";
   customAuthorize.checked = draft.authorizeJob !== false;
   restoreEuTargets(draft.euTargets);
   renderProjectTargetControls(getSelectedProject());
@@ -320,6 +336,8 @@ function getCustomDraft() {
     project: customProject.value,
     jobName: customJobName.value,
     jobSuffix: customJobSuffix.value,
+    referenceNumber: customReferenceNumber.value,
+    jobDescription: customJobDescription.value,
     jobDueDateLocal: customDueDate.value,
     authorizeJob: customAuthorize.checked,
     euTargets: getSelectedEuTargetLocales(),
@@ -374,6 +392,8 @@ async function submitCustomJob() {
             targetLocale: route.targetLocale,
             jobName,
             jobDueDate,
+            referenceNumber: customReferenceNumber.value.trim(),
+            jobDescription: customJobDescription.value.trim(),
             authorizeJob: customAuthorize.checked,
             fields,
           }),
@@ -388,11 +408,12 @@ async function submitCustomJob() {
       "success",
     );
     setDefaultCustomJobNameParts();
+    customReferenceNumber.value = "";
+    customJobDescription.value = "";
     customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
     customStringList.innerHTML = "";
     addCustomStringRow("", "");
     clearCustomDraft();
-    await loadCustomJobs();
   } catch (error) {
     setStatus(error.message, "error");
   }
@@ -407,147 +428,6 @@ function getCustomFields() {
       value: row.querySelector(".custom-string-value")?.value || "",
     }))
     .filter((field) => field.value.trim());
-}
-
-async function loadCustomJobs() {
-  customJobList.innerHTML =
-    '<div class="empty-state">Loading custom jobs...</div>';
-
-  try {
-    const response = await apiFetch("/api/custom-translation-requests");
-    renderCustomJobs(response.requests || []);
-  } catch (error) {
-    customJobList.innerHTML = `<div class="empty-state">Could not load custom jobs: ${escapeHtml(
-      error.message,
-    )}</div>`;
-  }
-}
-
-function renderCustomJobs(requests) {
-  if (!requests.length) {
-    customJobList.innerHTML =
-      '<div class="empty-state">No custom jobs submitted yet.</div>';
-    return;
-  }
-
-  customJobList.innerHTML = requests
-    .slice(0, 8)
-    .map(renderCustomJobItem)
-    .join("");
-  customJobList
-    .querySelectorAll('[data-action="check-custom-job"]')
-    .forEach((button) => {
-      button.addEventListener("click", () =>
-        checkCustomJob(button.dataset.requestId),
-      );
-    });
-}
-
-function renderCustomJobItem(request) {
-  return `
-    <div class="custom-job-item">
-      <div class="custom-job-main">
-        <span class="status-pill ${escapeAttribute(getRequestStatusClass(request))}">${escapeHtml(
-          getRequestStatusLabel(request),
-        )}</span>
-        <span class="custom-job-locale">${escapeHtml(request.targetLocale || "unknown")}</span>
-      </div>
-      <div class="custom-job-name">${escapeHtml(request.jobName || request.id)}</div>
-      <div class="project-details">${escapeHtml(formatDate(request.createdAt))}${
-        request.smartling?.translationJobUid
-          ? ` | Job ${escapeHtml(request.smartling.translationJobUid)}`
-          : ""
-      }</div>
-      ${renderCustomTranslations(request)}
-      ${
-        request.status === "submitted_to_smartling"
-          ? `<button class="secondary custom-check-button" type="button" data-action="check-custom-job" data-request-id="${escapeAttribute(
-              request.id,
-            )}">Check translations</button>`
-          : ""
-      }
-    </div>
-  `;
-}
-
-function renderCustomTranslations(request) {
-  const translations =
-    request.status === "translations_available" ? request.fields || [] : [];
-  if (!translations.length) {
-    const message = request.import?.message;
-    return message
-      ? `<div class="custom-job-note">${escapeHtml(message)}</div>`
-      : "";
-  }
-
-  return `
-    <div class="custom-translation-list">
-      ${translations
-        .filter((field) => field.sentToSmartling)
-        .map(
-          (field) => `
-            <div class="custom-translation-item">
-              <div class="custom-translation-label">${escapeHtml(field.fieldLabel)}</div>
-              <div class="custom-translation-value">${escapeHtml(field.translatedText || "Imported; refresh job if value is missing.")}</div>
-            </div>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-async function checkCustomJob(requestId) {
-  setStatus("Checking custom job translations...");
-
-  try {
-    const response = await apiFetch(
-      `/api/translation-requests/${encodeURIComponent(requestId)}/import-translations`,
-      {
-        method: "POST",
-      },
-    );
-
-    const request = {
-      ...response.request,
-      fields: mergeFieldTranslations(
-        response.request.fields,
-        response.translations,
-      ),
-    };
-    await loadCustomJobs();
-
-    if (request.status === "translations_available") {
-      setStatus(
-        `Imported ${response.translations.length} custom translation${
-          response.translations.length === 1 ? "" : "s"
-        }.`,
-        "success",
-      );
-    } else if (request.import?.mode === "not_ready") {
-      setStatus(
-        `Custom translations are not ready yet. Progress: ${request.import.progressPercent ?? 0}%.`,
-      );
-    } else {
-      setStatus(
-        request.import?.message || "Custom translations were not imported yet.",
-        "error",
-      );
-    }
-  } catch (error) {
-    setStatus(error.message, "error");
-  }
-}
-
-function mergeFieldTranslations(fields = [], translations = []) {
-  const byKey = new Map(
-    translations.map((translation) => [translation.fieldKey, translation]),
-  );
-  return fields.map((field) => ({
-    ...field,
-    translatedText:
-      byKey.get(field.fieldKey)?.translatedText || field.translatedText,
-  }));
 }
 
 function renderSmartlingStatus(status) {
@@ -681,22 +561,6 @@ function getMultiSubmitStatusMessage(requests) {
   return `${parts.join(", ")} for ${targets}.`;
 }
 
-function getRequestStatusLabel(request) {
-  if (request.status === "translations_available") return "Ready";
-  if (request.status === "submitted_to_smartling") return "Submitted";
-  if (request.status === "smartling_error") return "Error";
-  if (request.smartling?.mode === "not_configured") return "Local";
-  return "Stored";
-}
-
-function getRequestStatusClass(request) {
-  if (request.status === "translations_available") return "is-success";
-  if (request.status === "submitted_to_smartling") return "is-success";
-  if (request.status === "smartling_error") return "is-error";
-  if (request.smartling?.mode === "not_configured") return "is-muted";
-  return "is-warning";
-}
-
 function getApiBaseUrl() {
   return (input.value.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 }
@@ -779,20 +643,6 @@ function formatCompactDate(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}${month}${day}`;
-}
-
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value || "";
-  }
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function formatTime(value) {

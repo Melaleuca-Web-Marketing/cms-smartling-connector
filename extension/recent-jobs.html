@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>CMS Smartling Recent Jobs</title>
+    <link rel="stylesheet" href="recent-jobs.css">
+  </head>
+  <body>
+    <main class="jobs-shell">
+      <header class="jobs-header">
+        <div class="jobs-brand">
+          <img src="smartling_logo.png" alt="" class="jobs-logo">
+          <div>
+            <h1>Recent Jobs</h1>
+            <p>Review, filter, favorite, and check submitted CMS Smartling jobs.</p>
+          </div>
+        </div>
+        <button id="refreshJobs" type="button" class="primary-button">Refresh</button>
+      </header>
+
+      <div class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden></div>
+
+      <section class="stats-grid" aria-label="Recent job summary">
+        <div class="stat-card">
+          <span>Total jobs</span>
+          <strong id="totalJobs">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Custom jobs</span>
+          <strong id="customJobs">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Ready</span>
+          <strong id="readyJobs">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Favorites</span>
+          <strong id="favoriteJobs">0</strong>
+        </div>
+      </section>
+
+      <section class="filters-card" aria-label="Recent job filters">
+        <label class="search-field">
+          <span>Search</span>
+          <input id="searchJobs" type="search" placeholder="Job name, SKU, locale, label, or Smartling job ID">
+        </label>
+        <label>
+          <span>Type</span>
+          <select id="typeFilter">
+            <option value="all">All jobs</option>
+            <option value="custom">Custom jobs</option>
+            <option value="sku">SKU jobs</option>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="statusFilter">
+            <option value="all">All statuses</option>
+          </select>
+        </label>
+        <label>
+          <span>Target</span>
+          <select id="localeFilter">
+            <option value="all">All targets</option>
+          </select>
+        </label>
+        <label>
+          <span>Sort</span>
+          <select id="sortJobs">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name">Job name</option>
+            <option value="status">Status</option>
+          </select>
+        </label>
+        <label class="check-row" for="favoritesOnly">
+          <input id="favoritesOnly" type="checkbox">
+          <span>Favorites only</span>
+        </label>
+        <button id="clearFilters" type="button" class="secondary-button">Clear filters</button>
+      </section>
+
+      <section class="jobs-card">
+        <div class="jobs-list-header">
+          <div>
+            <h2>Jobs</h2>
+            <p id="jobsCount">No jobs loaded yet.</p>
+          </div>
+          <p id="status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="jobs-list" id="jobsList">
+          <div class="empty-state">Loading recent jobs...</div>
+        </div>
+      </section>
+    </main>
+    <script src="versionCheck.js"></script>
+    <script src="recent-jobs.js"></script>
+  </body>
+</html>

@@ -158,28 +158,25 @@ function instructionsSheetXml() {
 
 function stringsSheetXml() {
   const rows = [
-    [cell("A1", "Custom label", 1), cell("B1", "Source string", 1), cell("C1", "Notes", 1)],
+    [cell("A1", "Custom label", 1), cell("B1", "Source string", 1)],
     [
       cell("A2", "Category Heading", 3),
-      cell("B2", "Example category heading to translate", 3),
-      cell("C2", "Replace this example row.", 3)
+      cell("B2", "Example category heading to translate", 3)
     ],
     [
       cell("A3", "Facet Label", 3),
-      cell("B3", "Example refiner label", 3),
-      cell("C3", "Replace this example row.", 3)
+      cell("B3", "Example refiner label", 3)
     ]
   ];
 
   for (let row = 4; row <= 50; row += 1) {
-    rows.push([cell(`A${row}`, "", 3), cell(`B${row}`, "", 3), cell(`C${row}`, "", 3)]);
+    rows.push([cell(`A${row}`, "", 3), cell(`B${row}`, "", 3)]);
   }
 
   return worksheetXml({
     cols: [
       [1, 1, 28],
-      [2, 2, 64],
-      [3, 3, 34]
+      [2, 2, 64]
     ],
     freezeTopRow: true,
     rows

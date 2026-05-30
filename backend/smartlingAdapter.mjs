@@ -235,8 +235,19 @@ async function createJob(projectId, accessToken, request) {
     jobName: request.jobName
   };
 
+  const description = String(request.jobDescription || request.description || "").trim();
+  const referenceNumber = String(request.referenceNumber || "").trim();
+
   if (request.jobDueDate || request.dueDate) {
     body.dueDate = request.jobDueDate || request.dueDate;
+  }
+
+  if (description) {
+    body.description = description;
+  }
+
+  if (referenceNumber) {
+    body.referenceNumber = referenceNumber;
   }
 
   const data = await smartlingJsonRequest(`/jobs-api/v3/projects/${projectId}/jobs`, {
