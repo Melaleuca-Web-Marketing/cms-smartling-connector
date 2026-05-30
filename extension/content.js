@@ -668,7 +668,7 @@ async function submitSourceFields() {
         ? getSubmitStatusMessage(responses[0].request)
         : getMultiSubmitStatusMessage(responses.map((response) => response.request))
     );
-    await refreshRecentRequests(context);
+    await refreshRecentRequests(context, { sync: false });
   } catch (error) {
     setStatus(status, error.message, true);
   }
@@ -984,6 +984,13 @@ function getRecentRequestFeedback(request) {
     };
   }
 
+  if (request.status === "cancelled" || importState.mode === "cancelled") {
+    return {
+      className: "is-error",
+      message: importState.message || "Smartling job was cancelled."
+    };
+  }
+
   if (importState.mode === "downloaded") {
     return {
       className: "is-success",
@@ -1063,6 +1070,13 @@ function getFieldProgressState(request, feedback) {
     };
   }
 
+  if (request.status === "cancelled") {
+    return {
+      className: "is-error",
+      label: "Cancelled"
+    };
+  }
+
   if (request.status === "smartling_error" || feedback.className === "is-error") {
     return {
       className: "is-error",
@@ -1112,7 +1126,7 @@ function renderRecentRequestActions(request) {
           data-action="import-translations"
           data-request-id="${escapeAttribute(request.id)}"
         >
-          Check translations
+          Refresh now
         </button>
       </div>
     `;
@@ -1170,12 +1184,14 @@ function getRequestVisibilityPriority(request) {
   if (request.status === "translations_available") return 5;
   if (request.status === "submitted_to_smartling") return 4;
   if (request.status === "smartling_error") return 3;
+  if (request.status === "cancelled") return 2;
   if (request.smartling?.mode === "not_configured") return 1;
   return 2;
 }
 
 function getRequestStatusLabel(request) {
   if (request.status === "translations_available") return "Ready";
+  if (request.status === "cancelled") return "Cancelled";
   if (request.status === "submitted_to_smartling") return "Submitted";
   if (request.status === "smartling_error") return "Error";
   if (request.smartling?.mode === "not_configured") return "Local";
@@ -1184,6 +1200,7 @@ function getRequestStatusLabel(request) {
 
 function getRequestStatusClass(request) {
   if (request.status === "translations_available") return "is-ready";
+  if (request.status === "cancelled") return "is-cancelled";
   if (request.status === "submitted_to_smartling") return "is-success";
   if (request.status === "smartling_error") return "is-error";
   if (request.smartling?.mode === "not_configured") return "is-muted";
@@ -1221,7 +1238,7 @@ async function loadRecentRequests(context) {
   await refreshRecentRequests(context);
 }
 
-async function refreshRecentRequests(context) {
+async function refreshRecentRequests(context, { forceSync = false, sync = true } = {}) {
   const recentElement = document.getElementById("cms-smartling-recent");
   recentRequestsState = {
     sku: context.sku,
@@ -1234,6 +1251,17 @@ async function refreshRecentRequests(context) {
   }
 
   try {
+    if (sync) {
+      await apiFetch("/api/translation-requests/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          sku: context.sku,
+          force: forceSync,
+          reason: forceSync ? "manual" : "cms-panel"
+        })
+      }).catch(() => {});
+    }
+
     const response = await apiFetch(
       `/api/translation-requests?sku=${encodeURIComponent(context.sku)}`
     );
@@ -1275,7 +1303,7 @@ function wireRecentRequestActions(context) {
   });
 
   document.getElementById("cms-smartling-refresh-requests")?.addEventListener("click", () => {
-    refreshRecentRequests(context);
+    refreshRecentRequests(context, { forceSync: true });
   });
 
   document.querySelectorAll('[data-action="import-translations"]').forEach((button) => {
@@ -1291,14 +1319,18 @@ async function importTranslationsForRequest(context, button) {
 
   button.disabled = true;
   button.textContent = "Checking...";
-  setRequestCardFeedback(requestItem, "Checking Smartling for published translations...");
-  setStatus(status, "Checking Smartling for published translations...");
+  setRequestCardFeedback(requestItem, "Refreshing Smartling status...");
+  setStatus(status, "Refreshing Smartling status...");
 
   try {
     const response = await apiFetch(
-      `/api/translation-requests/${encodeURIComponent(requestId)}/import-translations`,
+      `/api/translation-requests/${encodeURIComponent(requestId)}/sync`,
       {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify({
+          force: true,
+          reason: "manual"
+        })
       }
     );
 
@@ -1306,6 +1338,12 @@ async function importTranslationsForRequest(context, button) {
       setStatus(
         status,
         `Imported ${response.translations.length} translation${response.translations.length === 1 ? "" : "s"} for ${response.request.targetLocale}. Switch to that culture to insert.`
+      );
+    } else if (response.request.status === "cancelled") {
+      setStatus(
+        status,
+        response.request.import?.message || `Smartling job was cancelled for ${response.request.targetLocale}.`,
+        true
       );
     } else if (response.request.import?.mode === "not_ready") {
       setStatus(
@@ -1322,12 +1360,12 @@ async function importTranslationsForRequest(context, button) {
       );
     }
 
-    await refreshRecentRequests(context);
+    await refreshRecentRequests(context, { sync: false });
   } catch (error) {
     setRequestCardFeedback(requestItem, error.message, true);
     setStatus(status, error.message, true);
     button.disabled = false;
-    button.textContent = "Check translations";
+    button.textContent = "Refresh now";
   }
 }
 

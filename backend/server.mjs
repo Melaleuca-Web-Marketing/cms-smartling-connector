@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   createSmartlingJob,
   downloadPublishedTranslations,
+  getSmartlingJobStatus,
   getSmartlingRuntimeStatus
 } from "./smartlingAdapter.mjs";
 import { getStoreInfo, loadStore, saveStore } from "./store.mjs";
@@ -12,6 +13,11 @@ const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
 const HOST = env.HOST || "127.0.0.1";
 const MAX_SMARTLING_JOB_DESCRIPTION_LENGTH = 8000;
+const DEFAULT_SMARTLING_SYNC_INTERVAL_MINUTES = 60;
+const DEFAULT_SMARTLING_SYNC_LOOKBACK_DAYS = 30;
+const DEFAULT_SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES = 5;
+const SYNCABLE_REQUEST_STATUSES = new Set(["submitted_to_smartling"]);
+const SMARTLING_CANCELLED_STATUSES = new Set(["CANCELLED", "DELETED"]);
 
 const FIELD_CONFIG = {
   productName: {
@@ -109,6 +115,55 @@ const ROUTES = [
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function getSmartlingSyncConfig() {
+  const intervalMinutes = getPositiveEnvNumber(
+    "SMARTLING_SYNC_INTERVAL_MINUTES",
+    DEFAULT_SMARTLING_SYNC_INTERVAL_MINUTES
+  );
+  const lookbackDays = getNonNegativeEnvNumber(
+    "SMARTLING_SYNC_LOOKBACK_DAYS",
+    DEFAULT_SMARTLING_SYNC_LOOKBACK_DAYS
+  );
+  const minCheckIntervalMinutes = getNonNegativeEnvNumber(
+    "SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES",
+    DEFAULT_SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES
+  );
+  const explicitEnabled = String(env.SMARTLING_SYNC_ENABLED || "").trim().toLowerCase();
+  const enabled =
+    env.SMARTLING_ENABLED === "true" &&
+    intervalMinutes > 0 &&
+    !["false", "0", "no", "off"].includes(explicitEnabled);
+
+  return {
+    enabled,
+    intervalMinutes,
+    intervalMs: intervalMinutes * 60 * 1000,
+    lookbackDays,
+    minCheckIntervalMinutes
+  };
+}
+
+function getSmartlingSyncRuntimeStatus() {
+  const config = getSmartlingSyncConfig();
+
+  return {
+    enabled: config.enabled,
+    intervalMinutes: config.intervalMinutes,
+    lookbackDays: config.lookbackDays,
+    minCheckIntervalMinutes: config.minCheckIntervalMinutes
+  };
+}
+
+function getPositiveEnvNumber(name, fallback) {
+  const value = Number(env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function getNonNegativeEnvNumber(name, fallback) {
+  const value = Number(env[name]);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 function normalizeJobDueDate(value) {
@@ -699,27 +754,302 @@ async function handleImportSmartlingTranslations(res, requestId) {
     return sendError(res, 404, "Translation request was not found.");
   }
 
-  const importedAt = nowIso();
+  const result = await syncSmartlingRequest(store, request, {
+    force: true,
+    markErrors: true,
+    reason: "manual"
+  });
+  await saveStore(store);
 
+  return sendJson(res, 200, {
+    request,
+    translations: result.translations || []
+  });
+}
+
+async function handleSyncSmartlingRequests(req, res, url) {
+  const body = await readJsonBody(req);
+  const result = await runSmartlingSync({
+    force:
+      body.force === true ||
+      url.searchParams.get("force") === "true" ||
+      url.searchParams.get("force") === "1",
+    reason: body.reason || "manual",
+    requestId: String(body.requestId || url.searchParams.get("requestId") || "").trim(),
+    sku: String(body.sku || url.searchParams.get("sku") || "").trim()
+  });
+
+  return sendJson(res, 200, result);
+}
+
+async function handleSyncSingleSmartlingRequest(req, res, requestId) {
+  const body = await readJsonBody(req);
+  const store = await loadStore();
+  const request = store.requests.find((candidate) => candidate.id === requestId);
+
+  if (!request) {
+    return sendError(res, 404, "Translation request was not found.");
+  }
+
+  const result = await syncSmartlingRequest(store, request, {
+    force: body.force !== false,
+    markErrors: true,
+    reason: body.reason || "manual"
+  });
+  await saveStore(store);
+
+  return sendJson(res, 200, {
+    request,
+    translations: result.translations || [],
+    sync: result
+  });
+}
+
+async function runSmartlingSync(options = {}) {
+  const store = await loadStore();
+  const config = getSmartlingSyncConfig();
+  const summary = {
+    enabled: config.enabled,
+    checked: 0,
+    skipped: 0,
+    imported: 0,
+    cancelled: 0,
+    errors: 0,
+    notReady: 0,
+    startedAt: nowIso(),
+    finishedAt: null
+  };
+
+  if (!config.enabled) {
+    summary.finishedAt = nowIso();
+    summary.message = env.SMARTLING_ENABLED === "true"
+      ? "Smartling sync is disabled by configuration."
+      : "Smartling sync is disabled because Smartling API calls are disabled.";
+    return {
+      summary,
+      requests: []
+    };
+  }
+
+  const requests = store.requests.filter((request) =>
+    shouldConsiderRequestForSync(request, options, config)
+  );
+  const syncedRequests = [];
+
+  for (const request of requests) {
+    if (!shouldRunRequestSync(request, options, config)) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const result = await syncSmartlingRequest(store, request, {
+      force: options.force === true,
+      markErrors: options.markErrors === true,
+      reason: options.reason || "scheduled"
+    });
+    syncedRequests.push(request);
+    summary.checked += 1;
+
+    if (result.status === "cancelled") summary.cancelled += 1;
+    if (result.status === "translations_available") summary.imported += 1;
+    if (result.status === "not_ready") summary.notReady += 1;
+    if (result.status === "error") summary.errors += 1;
+  }
+
+  if (summary.checked > 0) {
+    await saveStore(store);
+  }
+
+  summary.finishedAt = nowIso();
+  summary.message = buildSmartlingSyncSummaryMessage(summary);
+
+  return {
+    summary,
+    requests: syncedRequests
+  };
+}
+
+function shouldConsiderRequestForSync(request, options, config) {
+  if (!request || !SYNCABLE_REQUEST_STATUSES.has(request.status)) {
+    return false;
+  }
+
+  if (options.requestId && request.id !== options.requestId) {
+    return false;
+  }
+
+  if (options.sku && request.sku !== options.sku) {
+    return false;
+  }
+
+  if (!request.fileUri && !request.smartling?.translationJobUid) {
+    return false;
+  }
+
+  if (options.force === true || options.requestId) {
+    return true;
+  }
+
+  return isWithinSyncLookback(request, config);
+}
+
+function shouldRunRequestSync(request, options, config) {
+  if (options.force === true || options.requestId) {
+    return true;
+  }
+
+  const lastCheckedAt = new Date(request.smartlingSync?.lastCheckedAt || "");
+  if (Number.isNaN(lastCheckedAt.getTime())) {
+    return true;
+  }
+
+  const elapsedMs = Date.now() - lastCheckedAt.getTime();
+  return elapsedMs >= config.minCheckIntervalMinutes * 60 * 1000;
+}
+
+function isWithinSyncLookback(request, config) {
+  if (config.lookbackDays === 0) {
+    return true;
+  }
+
+  const createdAt = new Date(request.createdAt || "");
+  if (Number.isNaN(createdAt.getTime())) {
+    return true;
+  }
+
+  return Date.now() - createdAt.getTime() <= config.lookbackDays * 24 * 60 * 60 * 1000;
+}
+
+async function syncSmartlingRequest(store, request, options = {}) {
+  const checkedAt = nowIso();
+  request.smartlingSync = {
+    ...(request.smartlingSync || {}),
+    lastCheckedAt: checkedAt,
+    lastReason: options.reason || "manual"
+  };
+
+  const statusResult = await syncSmartlingJobStatus(store, request, checkedAt);
+  if (statusResult.status === "cancelled") {
+    return statusResult;
+  }
+
+  return await importSmartlingTranslationsForRequest(store, request, {
+    checkedAt,
+    markErrors: options.markErrors === true,
+    reason: options.reason || "manual"
+  });
+}
+
+async function syncSmartlingJobStatus(store, request, checkedAt) {
+  if (!request.smartling?.translationJobUid) {
+    return {
+      status: "skipped",
+      reason: "missing_translation_job_uid",
+      translations: []
+    };
+  }
+
+  try {
+    const jobStatus = await getSmartlingJobStatus(request);
+    request.smartlingJobStatus = summarizeSmartlingJobStatus(jobStatus);
+    request.smartlingSync.lastJobStatus = request.smartlingJobStatus.jobStatus || null;
+
+    if (request.smartling && request.smartlingJobStatus.jobStatus) {
+      request.smartling.jobStatus = request.smartlingJobStatus.jobStatus;
+    }
+
+    if (SMARTLING_CANCELLED_STATUSES.has(request.smartlingJobStatus.jobStatus)) {
+      markRequestCancelled(store, request, request.smartlingJobStatus, checkedAt);
+      return {
+        status: "cancelled",
+        translations: []
+      };
+    }
+  } catch (error) {
+    const normalizedError = normalizeSmartlingError(error);
+    request.smartlingJobStatus = {
+      ...normalizedError,
+      mode: "status_error",
+      checkedAt
+    };
+    request.smartlingSync.lastError = request.smartlingJobStatus;
+  }
+
+  return {
+    status: "checked",
+    translations: []
+  };
+}
+
+function summarizeSmartlingJobStatus(jobStatus) {
+  return {
+    mode: jobStatus.mode,
+    projectId: jobStatus.projectId || null,
+    translationJobUid: jobStatus.translationJobUid || null,
+    jobStatus: jobStatus.jobStatus || null,
+    checkedAt: jobStatus.checkedAt || nowIso(),
+    message: jobStatus.message || null
+  };
+}
+
+function markRequestCancelled(store, request, jobStatus, cancelledAt) {
+  request.status = "cancelled";
+  request.updatedAt = cancelledAt;
+  request.import = {
+    mode: "cancelled",
+    jobStatus: jobStatus.jobStatus || null,
+    checkedAt: cancelledAt,
+    message:
+      jobStatus.jobStatus === "DELETED"
+        ? "Smartling job was deleted. Translations were not imported."
+        : "Smartling job was cancelled. Translations were not imported."
+  };
+  request.smartlingSync.lastResult = "cancelled";
+  store.translations = store.translations.filter(
+    (translation) => translation.requestId !== request.id
+  );
+  store.events.push({
+    id: `evt_${randomUUID()}`,
+    createdAt: cancelledAt,
+    type: "translation_request_cancelled",
+    requestId: request.id,
+    sku: request.sku,
+    customJobKey: request.customJobKey || null,
+    targetLocale: request.targetLocale,
+    smartlingJobStatus: jobStatus.jobStatus || null
+  });
+}
+
+async function importSmartlingTranslationsForRequest(
+  store,
+  request,
+  { checkedAt = nowIso(), markErrors = true, reason = "manual" } = {}
+) {
   try {
     const download = await downloadPublishedTranslations(request);
 
     if (download.mode !== "downloaded") {
       request.import = download;
-      request.updatedAt = importedAt;
+      request.updatedAt = checkedAt;
+      request.smartlingSync.lastResult = download.mode;
       if (["config_error", "validation_error"].includes(download.mode)) {
-        request.status = "smartling_error";
+        if (markErrors) {
+          request.status = "smartling_error";
+        }
       } else if (download.mode === "not_ready") {
         request.status = "submitted_to_smartling";
         store.translations = store.translations.filter(
           (translation) => translation.requestId !== request.id
         );
+        return {
+          status: "not_ready",
+          translations: []
+        };
       }
-      await saveStore(store);
-      return sendJson(res, 200, {
-        request,
+      return {
+        status: ["config_error", "validation_error"].includes(download.mode) ? "error" : download.mode,
         translations: []
-      });
+      };
     }
 
     const translations = mapDownloadedTranslations(request, download.translatedFile);
@@ -732,21 +1062,21 @@ async function handleImportSmartlingTranslations(res, requestId) {
         message:
           "Published file was downloaded, but no translated values matched this request's field keys."
       };
-      request.updatedAt = importedAt;
-    store.events.push({
-      id: `evt_${randomUUID()}`,
-      createdAt: importedAt,
-      type: "translation_import_empty",
-      requestId: request.id,
-      sku: request.sku,
-      customJobKey: request.customJobKey || null,
-      targetLocale: request.targetLocale
-    });
-      await saveStore(store);
-      return sendJson(res, 200, {
-        request,
-        translations: []
+      request.updatedAt = checkedAt;
+      request.smartlingSync.lastResult = "empty_download";
+      store.events.push({
+        id: `evt_${randomUUID()}`,
+        createdAt: checkedAt,
+        type: "translation_import_empty",
+        requestId: request.id,
+        sku: request.sku,
+        customJobKey: request.customJobKey || null,
+        targetLocale: request.targetLocale
       });
+      return {
+        status: "error",
+        translations: []
+      };
     }
 
     store.translations = store.translations.filter(
@@ -763,44 +1093,68 @@ async function handleImportSmartlingTranslations(res, requestId) {
       translationCount: translations.length,
       message: download.message
     };
-    request.updatedAt = importedAt;
+    request.updatedAt = checkedAt;
+    request.smartlingSync.lastResult = "downloaded";
     store.events.push({
       id: `evt_${randomUUID()}`,
-      createdAt: importedAt,
-      type: "translations_imported",
+      createdAt: checkedAt,
+      type: reason === "scheduled" ? "translations_auto_imported" : "translations_imported",
       requestId: request.id,
       sku: request.sku,
       customJobKey: request.customJobKey || null,
       targetLocale: request.targetLocale,
       translationCount: translations.length
     });
-    await saveStore(store);
 
-    return sendJson(res, 200, {
-      request,
+    return {
+      status: "translations_available",
       translations
-    });
+    };
   } catch (error) {
-    request.status = "smartling_error";
-    request.import = normalizeSmartlingError(error);
-    request.updatedAt = importedAt;
-    store.events.push({
-      id: `evt_${randomUUID()}`,
-      createdAt: importedAt,
-      type: "translation_import_error",
-      requestId: request.id,
-      sku: request.sku,
-      customJobKey: request.customJobKey || null,
-      targetLocale: request.targetLocale,
-      message: error.message
-    });
-    await saveStore(store);
+    const normalizedError = normalizeSmartlingError(error);
+    request.import = normalizedError;
+    request.updatedAt = checkedAt;
+    request.smartlingSync.lastResult = "error";
+    request.smartlingSync.lastError = normalizedError;
 
-    return sendJson(res, 200, {
-      request,
+    if (markErrors) {
+      request.status = "smartling_error";
+      store.events.push({
+        id: `evt_${randomUUID()}`,
+        createdAt: checkedAt,
+        type: "translation_import_error",
+        requestId: request.id,
+        sku: request.sku,
+        customJobKey: request.customJobKey || null,
+        targetLocale: request.targetLocale,
+        message: error.message
+      });
+    }
+
+    return {
+      status: "error",
       translations: []
-    });
+    };
   }
+}
+
+function buildSmartlingSyncSummaryMessage(summary) {
+  if (!summary.enabled) {
+    return summary.message || "Smartling sync is disabled.";
+  }
+
+  if (!summary.checked) {
+    return summary.skipped
+      ? "Active Smartling jobs were checked recently."
+      : "No active Smartling jobs needed syncing.";
+  }
+
+  const parts = [`${summary.checked} checked`];
+  if (summary.imported) parts.push(`${summary.imported} ready`);
+  if (summary.cancelled) parts.push(`${summary.cancelled} cancelled`);
+  if (summary.notReady) parts.push(`${summary.notReady} not ready`);
+  if (summary.errors) parts.push(`${summary.errors} error${summary.errors === 1 ? "" : "s"}`);
+  return parts.join(", ");
 }
 
 async function handleMockPublish(req, res, requestId) {
@@ -975,7 +1329,14 @@ async function handleRequest(req, res) {
     }
 
     if (req.method === "GET" && pathname === "/api/smartling/status") {
-      return sendJson(res, 200, getSmartlingRuntimeStatus());
+      return sendJson(res, 200, {
+        ...getSmartlingRuntimeStatus(),
+        sync: getSmartlingSyncRuntimeStatus()
+      });
+    }
+
+    if (req.method === "POST" && pathname === "/api/translation-requests/sync") {
+      return await handleSyncSmartlingRequests(req, res, url);
     }
 
     if (req.method === "POST" && pathname === "/api/translation-requests") {
@@ -1020,6 +1381,13 @@ async function handleRequest(req, res) {
     const translationRequestMatch = pathname.match(/^\/api\/translation-requests\/([^/]+)$/);
     if (req.method === "GET" && translationRequestMatch) {
       return await handleCheckSmartlingSubmission(res, translationRequestMatch[1]);
+    }
+
+    const syncSmartlingMatch = pathname.match(
+      /^\/api\/translation-requests\/([^/]+)\/sync$/
+    );
+    if (req.method === "POST" && syncSmartlingMatch) {
+      return await handleSyncSingleSmartlingRequest(req, res, syncSmartlingMatch[1]);
     }
 
     const retrySmartlingMatch = pathname.match(
@@ -1076,6 +1444,48 @@ async function handleRequest(req, res) {
   }
 }
 
+let smartlingSyncTimer = null;
+let smartlingSyncInProgress = false;
+
+function startSmartlingSyncScheduler() {
+  const config = getSmartlingSyncConfig();
+
+  if (!config.enabled) {
+    console.log("Smartling status sync is disabled.");
+    return;
+  }
+
+  smartlingSyncTimer = setInterval(() => {
+    runScheduledSmartlingSync();
+  }, config.intervalMs);
+  smartlingSyncTimer.unref?.();
+
+  console.log(
+    `Smartling status sync enabled every ${config.intervalMinutes} minute${
+      config.intervalMinutes === 1 ? "" : "s"
+    }.`
+  );
+}
+
+async function runScheduledSmartlingSync() {
+  if (smartlingSyncInProgress) {
+    console.warn("Smartling status sync skipped because a previous sync is still running.");
+    return;
+  }
+
+  smartlingSyncInProgress = true;
+  try {
+    const result = await runSmartlingSync({
+      reason: "scheduled"
+    });
+    console.log(`Smartling status sync finished: ${result.summary.message}`);
+  } catch (error) {
+    console.error(`Smartling status sync failed: ${error.message}`);
+  } finally {
+    smartlingSyncInProgress = false;
+  }
+}
+
 const server = createServer(handleRequest);
 
 server.on("error", (error) => {
@@ -1092,6 +1502,7 @@ server.on("error", (error) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`CMS Smartling backend listening at http://${HOST}:${PORT}`);
+  startSmartlingSyncScheduler();
 });
 
 export { server };

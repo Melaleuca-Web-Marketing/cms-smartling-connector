@@ -153,6 +153,58 @@ export async function downloadPublishedTranslations(request = {}) {
   };
 }
 
+export async function getSmartlingJobStatus(request = {}) {
+  const env = globalThis.process?.env ?? {};
+
+  if (env.SMARTLING_ENABLED !== "true") {
+    return {
+      mode: "not_configured",
+      message:
+        "Smartling API calls are disabled. Set SMARTLING_ENABLED=true after credentials and project IDs are configured."
+    };
+  }
+
+  const projectConfig = getProjectConfig(env, request);
+  const missingConfig = getMissingProjectConfig(projectConfig);
+
+  if (missingConfig.length) {
+    return {
+      mode: "config_error",
+      projectId: projectConfig.projectId || null,
+      hasProjectToken: Boolean(projectConfig.userIdentifier && projectConfig.userSecret),
+      missingConfig,
+      message: `Missing Smartling configuration: ${missingConfig.join(", ")}.`
+    };
+  }
+
+  const translationJobUid = request.smartling?.translationJobUid || request.translationJobUid;
+
+  if (!translationJobUid) {
+    return {
+      mode: "validation_error",
+      projectId: projectConfig.projectId,
+      hasProjectToken: true,
+      message: "Cannot check Smartling job status because the request does not have a translationJobUid."
+    };
+  }
+
+  const auth = await authenticate(projectConfig);
+  const job = await getJobDetails(projectConfig.projectId, auth.accessToken, translationJobUid);
+  const jobStatus = extractSmartlingJobStatus(job);
+
+  return {
+    mode: "status",
+    projectId: projectConfig.projectId,
+    hasProjectToken: true,
+    translationJobUid,
+    jobStatus,
+    checkedAt: new Date().toISOString(),
+    message: jobStatus
+      ? `Smartling job status is ${jobStatus}.`
+      : "Smartling job status checked."
+  };
+}
+
 export function getSmartlingRuntimeStatus() {
   const env = globalThis.process?.env ?? {};
   const projectKeys = ["US", "CA", "EU"];
@@ -342,6 +394,16 @@ async function getBatchStatus(projectId, accessToken, batchUid) {
   );
 }
 
+async function getJobDetails(projectId, accessToken, translationJobUid) {
+  return await smartlingJsonRequest(
+    `/jobs-api/v3/projects/${projectId}/jobs/${translationJobUid}`,
+    {
+      method: "GET",
+      accessToken
+    }
+  );
+}
+
 async function getFileLocaleStatus(projectId, accessToken, { fileUri, targetLocale }) {
   const url = new URL(
     `${SMARTLING_API_BASE_URL}/files-api/v2/projects/${projectId}/locales/${targetLocale}/file/status`
@@ -394,6 +456,48 @@ function getStatusMetric(value, key) {
   }
 
   return Number.NaN;
+}
+
+function extractSmartlingJobStatus(value) {
+  const knownStatuses = new Set([
+    "DRAFT",
+    "AWAITING_AUTHORIZATION",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "CANCELLED",
+    "CANCELED",
+    "CLOSED",
+    "DELETED"
+  ]);
+  const statusKeys = new Set(["translationJobStatus", "jobStatus", "status"]);
+
+  function visit(node) {
+    if (!node || typeof node !== "object") {
+      return null;
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (!statusKeys.has(key) || typeof child !== "string") {
+        continue;
+      }
+
+      const normalized = child.trim().toUpperCase();
+      if (knownStatuses.has(normalized)) {
+        return normalized === "CANCELED" ? "CANCELLED" : normalized;
+      }
+    }
+
+    for (const child of Object.values(node)) {
+      const found = visit(child);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  return visit(value);
 }
 
 async function downloadTranslatedFile(projectId, accessToken, { fileUri, targetLocale }) {

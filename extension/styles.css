@@ -816,6 +816,11 @@
   color: #991b1b;
 }
 
+#cms-smartling-panel .cms-smartling-status-pill.is-cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 #cms-smartling-panel .cms-smartling-status-pill.is-warning {
   background: #fef3c7;
   color: #92400e;
@@ -839,6 +844,11 @@
 #cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-error {
   background: rgba(248, 113, 113, 0.18);
   color: #fca5a5;
+}
+
+#cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-cancelled {
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
 }
 
 #cms-smartling-panel[data-theme="dark"] .cms-smartling-status-pill.is-warning {

@@ -72,6 +72,17 @@ backend/data/store.sqlite
 
 If `backend/data/store.json` exists from an earlier MVP build and the SQLite database is empty, the backend imports the JSON file into SQLite on first startup. Runtime data files under `backend/data` are ignored by Git.
 
+When `SMARTLING_ENABLED=true`, the backend can poll active submitted jobs and update local status automatically:
+
+```text
+SMARTLING_SYNC_ENABLED=true
+SMARTLING_SYNC_INTERVAL_MINUTES=60
+SMARTLING_SYNC_LOOKBACK_DAYS=30
+SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES=5
+```
+
+The sync detects Smartling jobs that were cancelled or deleted, keeps progress feedback current, and stages published translations when files are ready. The Recent Jobs dashboard also runs a sync when opened or refreshed, so users do not need to click a separate check button for normal updates.
+
 ## Build Browser Extensions
 
 Generate loadable extension folders and refresh the landing page ZIP downloads from the shared source files:

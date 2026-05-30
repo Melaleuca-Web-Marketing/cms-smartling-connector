@@ -41,7 +41,7 @@ async function init() {
 }
 
 function wireEvents() {
-  elements.refreshJobs.addEventListener("click", loadJobs);
+  elements.refreshJobs.addEventListener("click", () => loadJobs({ forceSync: true }));
   elements.searchJobs.addEventListener("input", applyFilters);
   elements.typeFilter.addEventListener("change", applyFilters);
   elements.statusFilter.addEventListener("change", applyFilters);
@@ -52,11 +52,21 @@ function wireEvents() {
   elements.jobsList.addEventListener("click", handleJobAction);
 }
 
-async function loadJobs() {
-  setStatus("Loading recent jobs...");
+async function loadJobs({ forceSync = false, skipSync = false } = {}) {
+  setStatus(skipSync ? "Loading recent jobs..." : "Syncing active Smartling jobs...");
   elements.refreshJobs.disabled = true;
+  let syncSummary = null;
+  let syncError = null;
 
   try {
+    if (!skipSync) {
+      try {
+        syncSummary = await syncActiveJobs(forceSync);
+      } catch (error) {
+        syncError = error;
+      }
+    }
+
     const [customResponse, skuResponse] = await Promise.all([
       apiFetch("/api/custom-translation-requests"),
       apiFetch("/api/translation-requests")
@@ -69,7 +79,7 @@ async function loadJobs() {
 
     renderFilterOptions();
     applyFilters();
-    setStatus(`Loaded ${allJobs.length} job${allJobs.length === 1 ? "" : "s"}.`, "success");
+    setStatus(buildLoadStatusMessage(allJobs.length, syncSummary, syncError), syncError ? "error" : "success");
   } catch (error) {
     elements.jobsList.innerHTML = `<div class="empty-state">Could not load recent jobs: ${escapeHtml(error.message)}</div>`;
     elements.jobsCount.textContent = "Recent jobs are unavailable.";
@@ -77,6 +87,32 @@ async function loadJobs() {
   } finally {
     elements.refreshJobs.disabled = false;
   }
+}
+
+async function syncActiveJobs(force) {
+  const response = await apiFetch("/api/translation-requests/sync", {
+    method: "POST",
+    body: JSON.stringify({
+      force,
+      reason: force ? "manual" : "dashboard"
+    })
+  });
+
+  return response.summary || null;
+}
+
+function buildLoadStatusMessage(jobCount, syncSummary, syncError) {
+  const loaded = `Loaded ${jobCount} job${jobCount === 1 ? "" : "s"}.`;
+
+  if (syncError) {
+    return `${loaded} Sync failed: ${syncError.message}`;
+  }
+
+  if (!syncSummary) {
+    return loaded;
+  }
+
+  return `${loaded} ${syncSummary.message || "Smartling sync checked active jobs."}`;
 }
 
 function normalizeJob(request, fallbackType) {
@@ -107,6 +143,7 @@ function normalizeJob(request, fallbackType) {
       sourceLocale,
       targetLocale,
       smartlingJobUid,
+      request.smartlingJobStatus?.jobStatus,
       labelText
     ]
       .filter(Boolean)
@@ -248,7 +285,7 @@ function renderJobCard(job) {
       <div class="job-card-actions">
         ${
           job.status === "submitted_to_smartling"
-            ? `<button type="button" class="secondary-button" data-action="check-translations" data-request-id="${escapeAttribute(job.id)}">Check translations</button>`
+            ? `<button type="button" class="secondary-button" data-action="sync-job" data-request-id="${escapeAttribute(job.id)}">Refresh now</button>`
             : ""
         }
       </div>
@@ -272,8 +309,8 @@ async function handleJobAction(event) {
     return;
   }
 
-  if (button.dataset.action === "check-translations") {
-    await checkTranslations(requestId, button);
+  if (button.dataset.action === "sync-job") {
+    await syncJob(requestId, button);
   }
 }
 
@@ -290,15 +327,19 @@ async function toggleFavorite(requestId) {
   applyFilters();
 }
 
-async function checkTranslations(requestId, button) {
+async function syncJob(requestId, button) {
   button.disabled = true;
-  setStatus("Checking translations...");
+  setStatus("Refreshing Smartling status...");
 
   try {
     const response = await apiFetch(
-      `/api/translation-requests/${encodeURIComponent(requestId)}/import-translations`,
+      `/api/translation-requests/${encodeURIComponent(requestId)}/sync`,
       {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify({
+          force: true,
+          reason: "manual"
+        })
       }
     );
     const request = response.request || {};
@@ -310,13 +351,15 @@ async function checkTranslations(requestId, button) {
         }.`,
         "success"
       );
+    } else if (request.status === "cancelled") {
+      setStatus(request.import?.message || "Smartling job was cancelled.", "error");
     } else if (request.import?.mode === "not_ready") {
       setStatus(`Translations are not ready yet. Progress: ${request.import.progressPercent ?? 0}%.`);
     } else {
       setStatus(request.import?.message || "Translations were not imported yet.", "error");
     }
 
-    await loadJobs();
+    await loadJobs({ skipSync: true });
   } catch (error) {
     setStatus(error.message, "error");
   } finally {
@@ -393,6 +436,10 @@ function getFieldSummary(job) {
     return `${job.translatedFieldCount} of ${job.sentFieldCount || job.fieldCount} translated fields available.`;
   }
 
+  if (job.status === "cancelled") {
+    return "Smartling job was cancelled.";
+  }
+
   return `${job.sentFieldCount || job.fieldCount} string${
     (job.sentFieldCount || job.fieldCount) === 1 ? "" : "s"
   } submitted.`;
@@ -417,6 +464,7 @@ function getJobSubtitle(job) {
 
 function getStatusLabel(job) {
   if (job.status === "translations_available") return "Ready";
+  if (job.status === "cancelled") return "Cancelled";
   if (job.status === "submitted_to_smartling") return "Submitted";
   if (job.status === "smartling_error") return "Error";
   if (job.status === "stored_waiting_for_smartling") return "Stored";
@@ -427,6 +475,7 @@ function getStatusLabel(job) {
 function getStatusClass(job) {
   if (job.status === "translations_available") return "is-ready";
   if (job.status === "published") return "is-published";
+  if (job.status === "cancelled") return "is-cancelled";
   if (job.status === "submitted_to_smartling") return "is-submitted";
   if (job.status === "smartling_error") return "is-error";
   if (job.status === "stored_waiting_for_smartling") return "is-stored";

@@ -436,6 +436,7 @@ function renderSmartlingStatus(status) {
     renderProjectRow("US", projects.us),
     renderProjectRow("CA", projects.ca),
     renderProjectRow("EU", projects.eu),
+    renderSyncRow(status.sync),
   ].join("");
 
   smartlingSummary.innerHTML = `
@@ -449,6 +450,22 @@ function renderSmartlingStatus(status) {
       }</span>
     </div>
     ${rows}
+  `;
+}
+
+function renderSyncRow(sync = {}) {
+  return `
+    <div class="project-row">
+      <div class="project-key">Sync</div>
+      <div class="project-details">${escapeHtml(
+        sync.enabled
+          ? `every ${sync.intervalMinutes || 60} min | lookback ${sync.lookbackDays ?? 30} days`
+          : "disabled",
+      )}</div>
+      <span class="status-pill ${sync.enabled ? "is-success" : "is-muted"}">${
+        sync.enabled ? "Enabled" : "Off"
+      }</span>
+    </div>
   `;
 }
 
