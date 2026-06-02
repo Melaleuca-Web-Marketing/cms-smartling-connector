@@ -1,6 +1,13 @@
 import { inflateRawSync } from "node:zlib";
 
 const MAX_IMPORTED_ROWS = 500;
+const MAX_ZIP_ENTRIES = 256;
+const MAX_SELECTED_ENTRY_COMPRESSED_BYTES = 2 * 1024 * 1024;
+const MAX_SELECTED_ENTRY_UNCOMPRESSED_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_UNCOMPRESSED_BYTES = 16 * 1024 * 1024;
+const MAX_PARSED_ROWS = 1000;
+const MAX_PARSED_COLUMNS = 32;
+const MAX_SHARED_STRINGS = 5000;
 
 function parseCustomJobWorkbook(buffer) {
   const entries = readZipEntries(buffer);
@@ -49,17 +56,29 @@ function readZipEntries(buffer) {
   let centralDirectoryOffset = buffer.readUInt32LE(eocdOffset + 16);
   const entries = new Map();
 
+  if (totalEntries > MAX_ZIP_ENTRIES) {
+    throw new Error(`XLSX file has too many ZIP entries. Maximum is ${MAX_ZIP_ENTRIES}.`);
+  }
+
   for (let index = 0; index < totalEntries; index += 1) {
+    ensureBufferRange(buffer, centralDirectoryOffset, 46, "Invalid XLSX central directory.");
     if (buffer.readUInt32LE(centralDirectoryOffset) !== 0x02014b50) {
       throw new Error("Invalid XLSX central directory.");
     }
 
     const method = buffer.readUInt16LE(centralDirectoryOffset + 10);
     const compressedSize = buffer.readUInt32LE(centralDirectoryOffset + 20);
+    const uncompressedSize = buffer.readUInt32LE(centralDirectoryOffset + 24);
     const fileNameLength = buffer.readUInt16LE(centralDirectoryOffset + 28);
     const extraLength = buffer.readUInt16LE(centralDirectoryOffset + 30);
     const commentLength = buffer.readUInt16LE(centralDirectoryOffset + 32);
     const localHeaderOffset = buffer.readUInt32LE(centralDirectoryOffset + 42);
+    ensureBufferRange(
+      buffer,
+      centralDirectoryOffset + 46,
+      fileNameLength + extraLength + commentLength,
+      "Invalid XLSX central directory entry."
+    );
     const fileName = buffer
       .subarray(centralDirectoryOffset + 46, centralDirectoryOffset + 46 + fileNameLength)
       .toString("utf8");
@@ -67,7 +86,8 @@ function readZipEntries(buffer) {
     entries.set(normalizeZipPath(fileName), {
       compressedSize,
       localHeaderOffset,
-      method
+      method,
+      uncompressedSize
     });
 
     centralDirectoryOffset += 46 + fileNameLength + extraLength + commentLength;
@@ -75,7 +95,8 @@ function readZipEntries(buffer) {
 
   return {
     buffer,
-    entries
+    entries,
+    uncompressedBytesRead: 0
   };
 }
 
@@ -99,24 +120,62 @@ function getEntry(zip, path) {
 
   const { buffer } = zip;
   const localOffset = entry.localHeaderOffset;
+  ensureBufferRange(buffer, localOffset, 30, `Invalid XLSX local file header for ${path}.`);
   if (buffer.readUInt32LE(localOffset) !== 0x04034b50) {
     throw new Error(`Invalid XLSX local file header for ${path}.`);
   }
 
+  if (entry.data) {
+    return entry.data;
+  }
+
+  validateEntryLimits(entry, path);
+
   const fileNameLength = buffer.readUInt16LE(localOffset + 26);
   const extraLength = buffer.readUInt16LE(localOffset + 28);
   const dataStart = localOffset + 30 + fileNameLength + extraLength;
+  ensureBufferRange(buffer, dataStart, entry.compressedSize, `Invalid XLSX compressed data for ${path}.`);
   const compressed = buffer.subarray(dataStart, dataStart + entry.compressedSize);
+  let data;
 
   if (entry.method === 0) {
-    return compressed;
+    data = compressed;
+  } else if (entry.method === 8) {
+    try {
+      data = inflateRawSync(compressed, {
+        maxOutputLength: MAX_SELECTED_ENTRY_UNCOMPRESSED_BYTES
+      });
+    } catch (error) {
+      if (error?.code === "ERR_BUFFER_TOO_LARGE") {
+        throw new Error(`XLSX entry ${path} is too large after decompression.`);
+      }
+      throw error;
+    }
+  } else {
+    throw new Error(`Unsupported XLSX compression method ${entry.method}.`);
   }
 
-  if (entry.method === 8) {
-    return inflateRawSync(compressed);
+  if (data.length > MAX_SELECTED_ENTRY_UNCOMPRESSED_BYTES) {
+    throw new Error(`XLSX entry ${path} is too large after decompression.`);
   }
 
-  throw new Error(`Unsupported XLSX compression method ${entry.method}.`);
+  zip.uncompressedBytesRead += data.length;
+  if (zip.uncompressedBytesRead > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+    throw new Error("XLSX file is too large after decompression.");
+  }
+
+  entry.data = data;
+  return data;
+}
+
+function validateEntryLimits(entry, path) {
+  if (entry.compressedSize > MAX_SELECTED_ENTRY_COMPRESSED_BYTES) {
+    throw new Error(`XLSX entry ${path} is too large.`);
+  }
+
+  if (entry.uncompressedSize > MAX_SELECTED_ENTRY_UNCOMPRESSED_BYTES) {
+    throw new Error(`XLSX entry ${path} is too large after decompression.`);
+  }
 }
 
 function getRequiredText(zip, path) {
@@ -173,23 +232,35 @@ function getSharedStrings(zip) {
     return [];
   }
 
-  return [...sharedStringsXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/gi)].map((match) => {
+  const sharedStrings = [];
+  for (const match of sharedStringsXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/gi)) {
+    if (sharedStrings.length >= MAX_SHARED_STRINGS) {
+      throw new Error(`XLSX file has too many shared strings. Maximum is ${MAX_SHARED_STRINGS}.`);
+    }
+
     const textParts = [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/gi)].map((textMatch) =>
       decodeXml(textMatch[1])
     );
 
     if (textParts.length) {
-      return textParts.join("");
+      sharedStrings.push(textParts.join(""));
+      continue;
     }
 
-    return decodeXml(match[1].replace(/<[^>]+>/g, ""));
-  });
+    sharedStrings.push(decodeXml(match[1].replace(/<[^>]+>/g, "")));
+  }
+
+  return sharedStrings;
 }
 
 function readSheetRows(sheetXml, sharedStrings) {
   const rows = [];
 
   for (const rowMatch of sheetXml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/gi)) {
+    if (rows.length >= MAX_PARSED_ROWS) {
+      throw new Error(`XLSX file has too many rows. Maximum parsed row count is ${MAX_PARSED_ROWS}.`);
+    }
+
     const rowAttrs = parseAttributes(rowMatch[1]);
     const rowIndex = Number.parseInt(rowAttrs.r, 10) || rows.length + 1;
     const cells = [];
@@ -197,6 +268,9 @@ function readSheetRows(sheetXml, sharedStrings) {
     for (const cellMatch of rowMatch[2].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
       const cellAttrs = parseAttributes(cellMatch[1]);
       const columnIndex = columnIndexFromCellRef(cellAttrs.r) ?? cells.length;
+      if (columnIndex >= MAX_PARSED_COLUMNS) {
+        continue;
+      }
       cells[columnIndex] = readCellValue(cellAttrs, cellMatch[2], sharedStrings);
     }
 
@@ -292,7 +366,8 @@ function columnIndexFromCellRef(cellRef) {
   for (const letter of letters.toUpperCase()) {
     index = index * 26 + letter.charCodeAt(0) - 64;
   }
-  return index - 1;
+  const columnIndex = index - 1;
+  return columnIndex < MAX_PARSED_COLUMNS ? columnIndex : MAX_PARSED_COLUMNS;
 }
 
 function resolveZipPath(basePath, targetPath) {
@@ -315,6 +390,12 @@ function resolveZipPath(basePath, targetPath) {
 
 function normalizeZipPath(path) {
   return String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function ensureBufferRange(buffer, offset, length, message) {
+  if (offset < 0 || length < 0 || offset + length > buffer.length) {
+    throw new Error(message);
+  }
 }
 
 export { parseCustomJobWorkbook };

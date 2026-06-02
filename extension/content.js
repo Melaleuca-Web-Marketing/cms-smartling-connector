@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = "https://usifhqtsagrqt01.melaleuca.net/cms-smartling";
+const CMS_ALLOWED_HOSTS = new Set(["usifhqtsagrqt01.melaleuca.net"]);
 
 const MANAGED_FIELDS = new Map([
   ["product name", "productName"],
@@ -67,6 +68,7 @@ const ROUTES = [
 let currentScan = null;
 let scanTimer = null;
 let apiBaseUrl = DEFAULT_API_BASE_URL;
+let apiToken = "";
 let ignoreMutationsUntil = 0;
 let panelCollapsed = true;
 let panelTheme = "light";
@@ -81,11 +83,18 @@ let recentRequestsState = {
   error: null
 };
 
-init();
+if (isAllowedCmsHost()) {
+  init();
+}
+
+function isAllowedCmsHost() {
+  return CMS_ALLOWED_HOSTS.has(String(globalThis.location?.hostname || "").toLowerCase());
+}
 
 async function init() {
   const settings = await getExtensionSettings();
   apiBaseUrl = settings.apiBaseUrl;
+  apiToken = settings.apiToken;
   panelCollapsed = true;
   panelTheme = settings.panelTheme;
   recentRequestsCollapsed = settings.recentRequestsCollapsed;
@@ -109,6 +118,7 @@ function getExtensionSettings() {
     if (!globalThis.chrome?.storage?.local) {
       resolve({
         apiBaseUrl: DEFAULT_API_BASE_URL,
+        apiToken: "",
         panelTheme: "light",
         recentRequestsCollapsed: true
       });
@@ -118,12 +128,14 @@ function getExtensionSettings() {
     chrome.storage.local.get(
       {
         apiBaseUrl: DEFAULT_API_BASE_URL,
+        apiToken: "",
         smartlingPanelTheme: "light",
         smartlingRecentRequestsCollapsed: true
       },
       (items) => {
         resolve({
           apiBaseUrl: items.apiBaseUrl || DEFAULT_API_BASE_URL,
+          apiToken: items.apiToken || "",
           panelTheme: items.smartlingPanelTheme === "dark" ? "dark" : "light",
           recentRequestsCollapsed: items.smartlingRecentRequestsCollapsed !== false
         });
@@ -1579,6 +1591,7 @@ async function apiFetch(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...(options.headers || {})
     }
   });
@@ -1589,6 +1602,10 @@ async function apiFetch(path, options = {}) {
   }
 
   return data;
+}
+
+function getAuthHeaders() {
+  return apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 }
 
 function setStatus(element, message, isError = false) {

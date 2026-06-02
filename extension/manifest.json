@@ -17,7 +17,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://usifhqtsagrqt01.melaleuca.net/*"],
       "js": ["versionCheck.js", "content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
@@ -26,7 +26,7 @@
   "web_accessible_resources": [
     {
       "resources": ["smartling_logo.png"],
-      "matches": ["<all_urls>"]
+      "matches": ["https://usifhqtsagrqt01.melaleuca.net/*"]
     }
   ],
   "action": {

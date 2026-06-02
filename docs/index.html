@@ -133,12 +133,16 @@
 
       function renderDownloadLinks(releaseInfo) {
         const version = String(releaseInfo.version || "").trim();
-        const chromiumHref =
-          releaseInfo.downloads?.chromium ||
-          (version ? `downloads/cms-smartling-connector-chromium-v${encodeURIComponent(version)}.zip` : "");
-        const firefoxHref =
-          releaseInfo.downloads?.firefox ||
-          (version ? `downloads/cms-smartling-connector-firefox-v${encodeURIComponent(version)}.zip` : "");
+        const chromiumHref = getSafeDownloadHref(
+          releaseInfo.downloads?.chromium,
+          "chromium",
+          version
+        );
+        const firefoxHref = getSafeDownloadHref(
+          releaseInfo.downloads?.firefox,
+          "firefox",
+          version
+        );
 
         if (chromiumHref) {
           downloadChromium.href = chromiumHref;
@@ -155,6 +159,32 @@
             firefoxHref.split("/").pop() || "cms-smartling-connector-firefox.zip"
           );
         }
+      }
+
+      function getSafeDownloadHref(candidateHref, browser, version) {
+        const candidate = String(candidateHref || "").trim();
+        if (isSafeExtensionDownloadHref(candidate, browser)) {
+          return candidate;
+        }
+
+        const versionSegment = getSafeVersionSegment(version);
+        const fallback = versionSegment
+          ? `downloads/cms-smartling-connector-${browser}-v${versionSegment}.zip`
+          : `downloads/cms-smartling-connector-${browser}.zip`;
+
+        return isSafeExtensionDownloadHref(fallback, browser) ? fallback : "";
+      }
+
+      function isSafeExtensionDownloadHref(href, browser) {
+        const pattern = new RegExp(
+          `^downloads/cms-smartling-connector-${browser}(?:-v[0-9A-Za-z][0-9A-Za-z._-]*)?\\.zip$`
+        );
+        return pattern.test(String(href || "").trim());
+      }
+
+      function getSafeVersionSegment(version) {
+        const value = String(version || "").trim();
+        return /^[0-9A-Za-z][0-9A-Za-z._-]*$/.test(value) ? value : "";
       }
 
       function renderChangeList(changes) {

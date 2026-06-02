@@ -2,6 +2,7 @@ const DEFAULT_API_BASE_URL = "https://usifhqtsagrqt01.melaleuca.net/cms-smartlin
 const FAVORITES_STORAGE_KEY = "smartlingRecentJobFavorites";
 
 let apiBaseUrl = DEFAULT_API_BASE_URL;
+let apiToken = "";
 let favoriteIds = new Set();
 let allJobs = [];
 let filteredJobs = [];
@@ -30,9 +31,11 @@ init();
 async function init() {
   const stored = await getExtensionStorage({
     apiBaseUrl: DEFAULT_API_BASE_URL,
+    apiToken: "",
     [FAVORITES_STORAGE_KEY]: []
   });
   apiBaseUrl = String(stored.apiBaseUrl || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
+  apiToken = String(stored.apiToken || "");
   favoriteIds = new Set(Array.isArray(stored[FAVORITES_STORAGE_KEY]) ? stored[FAVORITES_STORAGE_KEY] : []);
 
   wireEvents();
@@ -382,6 +385,7 @@ async function apiFetch(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...(options.headers || {})
     }
   });
@@ -392,6 +396,10 @@ async function apiFetch(path, options = {}) {
   }
 
   return data;
+}
+
+function getAuthHeaders() {
+  return apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 }
 
 async function checkForExtensionUpdates() {

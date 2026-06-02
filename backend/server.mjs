@@ -12,6 +12,23 @@ import { parseCustomJobWorkbook } from "./xlsxImport.mjs";
 const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
 const HOST = env.HOST || "127.0.0.1";
+const DEFAULT_CORS_ALLOWED_ORIGINS = [
+  "https://usifhqtsagrqt01.melaleuca.net",
+  "http://localhost:17817",
+  "http://127.0.0.1:17817"
+];
+const CORS_ALLOWED_ORIGINS = new Set(
+  parseCsvEnv("CORS_ALLOWED_ORIGINS", DEFAULT_CORS_ALLOWED_ORIGINS)
+    .map(normalizeOrigin)
+    .filter(Boolean)
+);
+const CORS_ALLOWED_EXTENSION_SCHEMES = new Set(
+  parseCsvEnv("CORS_ALLOWED_EXTENSION_SCHEMES", ["chrome-extension", "moz-extension"])
+);
+const CORS_ALLOWED_HEADERS = "Content-Type, Authorization";
+const CORS_ALLOWED_METHODS = "GET, POST, OPTIONS";
+const BACKEND_API_TOKEN = String(env.BACKEND_API_TOKEN || "").trim();
+const corsHeadersByResponse = new WeakMap();
 const MAX_SMARTLING_JOB_DESCRIPTION_LENGTH = 8000;
 const DEFAULT_SMARTLING_SYNC_INTERVAL_MINUTES = 60;
 const DEFAULT_SMARTLING_SYNC_LOOKBACK_DAYS = 30;
@@ -166,6 +183,64 @@ function getNonNegativeEnvNumber(name, fallback) {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
+function parseCsvEnv(name, fallback = []) {
+  const raw = String(env[name] || "").trim();
+  const values = raw ? raw.split(",") : fallback;
+  return values.map((value) => String(value || "").trim()).filter(Boolean);
+}
+
+function normalizeOrigin(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function getOriginScheme(origin) {
+  const match = String(origin || "").match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  return match ? match[1].toLowerCase() : "";
+}
+
+function getCorsHeadersForRequest(req) {
+  const origin = normalizeOrigin(req.headers.origin || "");
+
+  if (!origin) {
+    return {};
+  }
+
+  if (
+    CORS_ALLOWED_ORIGINS.has(origin) ||
+    CORS_ALLOWED_EXTENSION_SCHEMES.has(getOriginScheme(origin))
+  ) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Headers": CORS_ALLOWED_HEADERS,
+      "Access-Control-Allow-Methods": CORS_ALLOWED_METHODS,
+      Vary: "Origin"
+    };
+  }
+
+  return null;
+}
+
+function setCorsHeaders(res, headers) {
+  corsHeadersByResponse.set(res, headers || {});
+}
+
+function isApiPath(pathname) {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+function isAuthorizedApiRequest(req, pathname) {
+  if (!BACKEND_API_TOKEN || !isApiPath(pathname)) {
+    return true;
+  }
+
+  return String(req.headers.authorization || "") === `Bearer ${BACKEND_API_TOKEN}`;
+}
+
 function normalizeJobDueDate(value) {
   const date = new Date(String(value || ""));
 
@@ -179,9 +254,7 @@ function normalizeJobDueDate(value) {
 function sendJson(res, statusCode, body) {
   const payload = JSON.stringify(body, null, 2);
   res.writeHead(statusCode, {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    ...(corsHeadersByResponse.get(res) || {}),
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(payload)
   });
@@ -1298,12 +1371,25 @@ async function handleEvent(req, res) {
 }
 
 async function handleRequest(req, res) {
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+  const corsHeaders = getCorsHeadersForRequest(req);
+  if (corsHeaders === null) {
+    res.writeHead(403, {
+      "Content-Type": "application/json; charset=utf-8"
     });
+    res.end(
+      JSON.stringify({
+        error: {
+          message: "Origin is not allowed.",
+          details: null
+        }
+      })
+    );
+    return;
+  }
+  setCorsHeaders(res, corsHeaders);
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, corsHeaders);
     res.end();
     return;
   }
@@ -1312,6 +1398,10 @@ async function handleRequest(req, res) {
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
 
   try {
+    if (!isAuthorizedApiRequest(req, pathname)) {
+      return sendError(res, 401, "Backend API token is required.");
+    }
+
     if (req.method === "GET" && pathname === "/health") {
       return sendJson(res, 200, {
         ok: true,

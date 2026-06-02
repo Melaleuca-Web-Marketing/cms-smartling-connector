@@ -28,6 +28,7 @@ if (globalThis.chrome?.storage?.local) {
   chrome.storage.local.get(
     {
       apiBaseUrl: DEFAULT_API_BASE_URL,
+      apiToken: "",
       [BULK_DRAFT_STORAGE_KEY]: null
     },
     (items) => {
@@ -151,9 +152,11 @@ async function importWorkbook() {
     }
 
     setStatus("Importing workbook...");
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${await getApiBaseUrl()}/api/custom-translation-requests/import-xlsx`, {
       method: "POST",
       headers: {
+        ...authHeaders,
         "Content-Type":
           file.type ||
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -332,10 +335,12 @@ function getSelectedEuTargetLocales() {
 }
 
 async function apiFetch(path, options = {}) {
+  const authHeaders = await getAuthHeaders();
   const response = await fetch(`${await getApiBaseUrl()}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(options.headers || {})
     }
   });
@@ -349,17 +354,35 @@ async function apiFetch(path, options = {}) {
 }
 
 function getApiBaseUrl() {
+  return getBackendSettings().then((settings) => settings.apiBaseUrl);
+}
+
+function getAuthHeaders() {
+  return getBackendSettings().then((settings) =>
+    settings.apiToken ? { Authorization: `Bearer ${settings.apiToken}` } : {}
+  );
+}
+
+function getBackendSettings() {
   return new Promise((resolve) => {
     if (!globalThis.chrome?.storage?.local) {
-      resolve(DEFAULT_API_BASE_URL);
+      resolve({
+        apiBaseUrl: DEFAULT_API_BASE_URL,
+        apiToken: ""
+      });
       return;
     }
 
     chrome.storage.local.get(
       {
-        apiBaseUrl: DEFAULT_API_BASE_URL
+        apiBaseUrl: DEFAULT_API_BASE_URL,
+        apiToken: ""
       },
-      (items) => resolve((items.apiBaseUrl || DEFAULT_API_BASE_URL).replace(/\/+$/, ""))
+      (items) =>
+        resolve({
+          apiBaseUrl: (items.apiBaseUrl || DEFAULT_API_BASE_URL).replace(/\/+$/, ""),
+          apiToken: items.apiToken || ""
+        })
     );
   });
 }

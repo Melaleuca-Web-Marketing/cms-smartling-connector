@@ -179,7 +179,20 @@ Firefox Manifest V3 host permissions are user-controlled. If the panel does not 
 
 The extension starts collapsed as a circular Smartling logo button in the lower-right corner. Open it to use the workflow panel. The panel header includes a dark/light theme toggle and a collapse control.
 
-For production, narrow the `content_scripts.matches` value in `extension/manifest.json` and `extension/manifest.firefox.json` to the CMS origin.
+For production, keep the `content_scripts.matches` value in `extension/manifest.json` and `extension/manifest.firefox.json` limited to the CMS origin. Custom jobs still work from the extension popup and full-page extension screens; the content script is only needed for the in-page SKU panel.
+
+## Backend Browser Access Controls
+
+The backend no longer returns wildcard CORS headers. Browser callers are allowed when their `Origin` is one of the configured web origins or uses an allowed browser-extension scheme:
+
+```env
+CORS_ALLOWED_ORIGINS=https://usifhqtsagrqt01.melaleuca.net,http://localhost:17817,http://127.0.0.1:17817
+CORS_ALLOWED_EXTENSION_SCHEMES=chrome-extension,moz-extension
+```
+
+Use `CORS_ALLOWED_ORIGINS` for web page origins such as the CMS host and the internal extension download host. Use `CORS_ALLOWED_EXTENSION_SCHEMES` for extension popup, Bulk Import, and Recent Jobs pages. Random web pages should not be listed.
+
+For an additional backend guard, set `BACKEND_API_TOKEN` in `.env`. When present, every `/api/*` route requires `Authorization: Bearer <token>`. Users should save the same token in the extension Settings tab. `/health` remains unauthenticated so users can verify that the backend is reachable.
 
 ## Custom Translation Jobs
 

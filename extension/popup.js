@@ -5,6 +5,7 @@ let draftSaveTimer = null;
 let restoringDraft = false;
 
 const input = document.getElementById("apiBaseUrl");
+const apiTokenInput = document.getElementById("apiToken");
 const statusElement = document.getElementById("status");
 const backendState = document.getElementById("backendState");
 const backendDetails = document.getElementById("backendDetails");
@@ -24,10 +25,12 @@ const customStringList = document.getElementById("customStringList");
 chrome.storage.local.get(
   {
     apiBaseUrl: DEFAULT_API_BASE_URL,
+    apiToken: "",
     [CUSTOM_DRAFT_STORAGE_KEY]: null,
   },
   (items) => {
     input.value = items.apiBaseUrl || DEFAULT_API_BASE_URL;
+    apiTokenInput.value = items.apiToken || "";
     initCustomJobForm(items[CUSTOM_DRAFT_STORAGE_KEY]);
     checkForExtensionUpdates();
   },
@@ -37,14 +40,16 @@ wireTabs();
 
 document.getElementById("save").addEventListener("click", () => {
   const apiBaseUrl = getApiBaseUrl();
-  chrome.storage.local.set({ apiBaseUrl }, () => {
+  const apiToken = getApiToken();
+  chrome.storage.local.set({ apiBaseUrl, apiToken }, () => {
     input.value = apiBaseUrl;
+    apiTokenInput.value = apiToken;
     setBackendState(
       "muted",
       "Not tested",
-      "Backend URL saved. Test the connection when ready.",
+      "Backend settings saved. Test the connection when ready.",
     );
-    setStatus("Saved backend URL.", "success");
+    setStatus("Saved backend settings.", "success");
     checkForExtensionUpdates();
   });
 });
@@ -114,18 +119,12 @@ async function testBackend() {
 }
 
 async function checkSmartlingConfig() {
-  const apiBaseUrl = getApiBaseUrl();
   smartlingSummary.innerHTML =
     '<div class="empty-state">Checking Smartling configuration...</div>';
   setStatus("Checking Smartling configuration...");
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/smartling/status`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const status = await response.json();
+    const status = await apiFetch("/api/smartling/status");
     renderSmartlingStatus(status);
     setStatus("Smartling configuration checked.", "success");
   } catch (error) {
@@ -501,6 +500,7 @@ async function apiFetch(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...(options.headers || {}),
     },
   });
@@ -580,6 +580,15 @@ function getMultiSubmitStatusMessage(requests) {
 
 function getApiBaseUrl() {
   return (input.value.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
+}
+
+function getApiToken() {
+  return apiTokenInput.value.trim();
+}
+
+function getAuthHeaders() {
+  const apiToken = getApiToken();
+  return apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 }
 
 function setBackendState(state, label, detail) {
