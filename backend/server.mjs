@@ -13,6 +13,7 @@ const env = globalThis.process?.env ?? {};
 const PORT = Number(env.PORT || 17817);
 const HOST = env.HOST || "127.0.0.1";
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
+  "https://ctuscms.melaleuca.net",
   "https://usifhqtsagrqt01.melaleuca.net",
   "http://localhost:17817",
   "http://127.0.0.1:17817"

@@ -186,7 +186,7 @@ For production, keep the `content_scripts.matches` value in `extension/manifest.
 The backend no longer returns wildcard CORS headers. Browser callers are allowed when their `Origin` is one of the configured web origins or uses an allowed browser-extension scheme:
 
 ```env
-CORS_ALLOWED_ORIGINS=https://usifhqtsagrqt01.melaleuca.net,http://localhost:17817,http://127.0.0.1:17817
+CORS_ALLOWED_ORIGINS=https://ctuscms.melaleuca.net,https://usifhqtsagrqt01.melaleuca.net,http://localhost:17817,http://127.0.0.1:17817
 CORS_ALLOWED_EXTENSION_SCHEMES=chrome-extension,moz-extension
 ```
 

@@ -1,5 +1,8 @@
 const DEFAULT_API_BASE_URL = "https://usifhqtsagrqt01.melaleuca.net/cms-smartling";
-const CMS_ALLOWED_HOSTS = new Set(["usifhqtsagrqt01.melaleuca.net"]);
+const CMS_ALLOWED_HOSTS = new Set([
+  "ctuscms.melaleuca.net",
+  "usifhqtsagrqt01.melaleuca.net"
+]);
 
 const MANAGED_FIELDS = new Map([
   ["product name", "productName"],
