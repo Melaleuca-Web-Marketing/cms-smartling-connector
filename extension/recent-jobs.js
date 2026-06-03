@@ -124,6 +124,8 @@ function normalizeJob(request, fallbackType) {
   const sentFields = fields.filter((field) => field.sentToSmartling !== false && field.emptySource !== true);
   const translatedFields = fields.filter((field) => String(field.translatedText || "").trim());
   const labelText = fields.map((field) => field.fieldLabel || field.label || field.fieldKey).filter(Boolean).join(" ");
+  const translatedText = translatedFields.map((field) => field.translatedText).join(" ");
+  const sourceText = fields.map((field) => field.sourceText).filter(Boolean).join(" ");
   const smartlingJobUid = request.smartling?.translationJobUid || "";
   const sourceLocale = request.sourceLocale || "";
   const targetLocale = request.targetLocale || "";
@@ -147,7 +149,9 @@ function normalizeJob(request, fallbackType) {
       targetLocale,
       smartlingJobUid,
       request.smartlingJobStatus?.jobStatus,
-      labelText
+      labelText,
+      sourceText,
+      translatedText
     ]
       .filter(Boolean)
       .join(" ")
@@ -282,6 +286,7 @@ function renderJobCard(job) {
         <span class="field-labels">${escapeHtml(getFieldLabels(job))}</span>
       </div>
 
+      ${renderCustomTranslations(job)}
       ${job.jobDescription ? `<div class="job-note"><strong>Additional details</strong><span>${escapeHtml(job.jobDescription)}</span></div>` : ""}
       ${job.import?.message ? `<div class="job-note">${escapeHtml(job.import.message)}</div>` : ""}
 
@@ -309,6 +314,16 @@ async function handleJobAction(event) {
 
   if (button.dataset.action === "toggle-favorite") {
     await toggleFavorite(requestId);
+    return;
+  }
+
+  if (button.dataset.action === "copy-translation") {
+    await copyTranslation(requestId, button.dataset.fieldKey || "", button);
+    return;
+  }
+
+  if (button.dataset.action === "copy-all-translations") {
+    await copyAllTranslations(requestId, button);
     return;
   }
 
@@ -453,6 +468,71 @@ function getFieldSummary(job) {
   } submitted.`;
 }
 
+function renderCustomTranslations(job) {
+  if (job.displayType !== "custom" || !["translations_available", "published"].includes(job.status)) {
+    return "";
+  }
+
+  const translatedFields = (job.fields || []).filter((field) =>
+    String(field.translatedText || "").trim()
+  );
+
+  if (!translatedFields.length) {
+    return "";
+  }
+
+  const count = translatedFields.length;
+
+  return `
+    <details class="translation-review">
+      <summary>
+        <span>View translations (${count})</span>
+        <span class="translation-review-hint">Source and translated strings</span>
+      </summary>
+      <div class="translation-review-toolbar">
+        <button
+          type="button"
+          class="secondary-button"
+          data-action="copy-all-translations"
+          data-request-id="${escapeAttribute(job.id)}"
+        >Copy all translations</button>
+      </div>
+      <div class="translation-list">
+        ${translatedFields.map((field) => renderTranslationRow(job, field)).join("")}
+      </div>
+    </details>
+  `;
+}
+
+function renderTranslationRow(job, field) {
+  const label = field.fieldLabel || field.label || field.fieldKey || "Custom string";
+
+  return `
+    <section class="translation-row">
+      <div class="translation-row-header">
+        <h3>${escapeHtml(label)}</h3>
+        <button
+          type="button"
+          class="secondary-button translation-copy-button"
+          data-action="copy-translation"
+          data-request-id="${escapeAttribute(job.id)}"
+          data-field-key="${escapeAttribute(field.fieldKey)}"
+        >Copy translation</button>
+      </div>
+      <div class="translation-columns">
+        <div class="translation-value">
+          <strong>Source</strong>
+          <pre>${escapeHtml(field.sourceText || "")}</pre>
+        </div>
+        <div class="translation-value is-translated">
+          <strong>Translation</strong>
+          <pre>${escapeHtml(field.translatedText || "")}</pre>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function getFieldLabels(job) {
   return (
     (job.fields || [])
@@ -512,6 +592,96 @@ function uniqueValues(values) {
 function setStatus(message, state = "muted") {
   elements.status.textContent = message;
   elements.status.className = state === "error" ? "is-error" : state === "success" ? "is-success" : "";
+}
+
+async function copyTranslation(requestId, fieldKey, button) {
+  const job = findJob(requestId);
+  const field = (job?.fields || []).find((candidate) => candidate.fieldKey === fieldKey);
+  const translatedText = String(field?.translatedText || "");
+
+  if (!translatedText.trim()) {
+    setStatus("No translated text is available to copy.", "error");
+    return;
+  }
+
+  try {
+    await copyText(translatedText);
+    flashButtonLabel(button, "Copied");
+    setStatus(`Copied ${field.fieldLabel || field.label || field.fieldKey || "translation"}.`, "success");
+  } catch (error) {
+    setStatus(error.message || "Could not copy translated text.", "error");
+  }
+}
+
+async function copyAllTranslations(requestId, button) {
+  const job = findJob(requestId);
+  const translatedFields = (job?.fields || []).filter((field) =>
+    String(field.translatedText || "").trim()
+  );
+
+  if (!translatedFields.length) {
+    setStatus("No translated text is available to copy.", "error");
+    return;
+  }
+
+  try {
+    await copyText(
+      translatedFields
+        .map((field) => {
+          const label = field.fieldLabel || field.label || field.fieldKey || "Custom string";
+          return `${label}\n${field.translatedText}`;
+        })
+        .join("\n\n")
+    );
+    flashButtonLabel(button, "Copied");
+    setStatus(
+      `Copied ${translatedFields.length} translated string${translatedFields.length === 1 ? "" : "s"}.`,
+      "success"
+    );
+  } catch (error) {
+    setStatus(error.message || "Could not copy translated strings.", "error");
+  }
+}
+
+function findJob(requestId) {
+  return allJobs.find((job) => job.id === requestId);
+}
+
+async function copyText(value) {
+  if (globalThis.navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through to the textarea path for browsers that reject clipboard writes.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+
+  if (!copied) {
+    throw new Error("Could not copy translated text.");
+  }
+}
+
+function flashButtonLabel(button, label) {
+  if (!button) {
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  button.textContent = label;
+  setTimeout(() => {
+    button.textContent = originalLabel;
+  }, 1400);
 }
 
 function getExtensionStorage(defaults) {

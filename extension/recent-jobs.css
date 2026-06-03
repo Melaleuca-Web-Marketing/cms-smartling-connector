@@ -352,6 +352,119 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+.translation-review {
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: var(--sl-text);
+  overflow: hidden;
+}
+
+.translation-review summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 9px 10px;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.translation-review summary::marker {
+  color: var(--sl-brand);
+}
+
+.translation-review[open] summary {
+  border-bottom: 1px solid #bfdbfe;
+  background: #eff6ff;
+}
+
+.translation-review-hint {
+  color: #475569;
+  font-weight: 750;
+}
+
+.translation-review-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 10px 0;
+}
+
+.translation-list {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.translation-row {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--sl-border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--sl-surface);
+}
+
+.translation-row-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.translation-row h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.translation-copy-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.translation-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.translation-value {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--sl-border);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--sl-page);
+}
+
+.translation-value.is-translated {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.translation-value strong {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.translation-value pre {
+  margin: 0;
+  color: #0f172a;
+  font: inherit;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -482,5 +595,15 @@ button:disabled {
 
   .jobs-list {
     max-height: none;
+  }
+
+  .translation-review summary,
+  .translation-row-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .translation-columns {
+    grid-template-columns: 1fr;
   }
 }
