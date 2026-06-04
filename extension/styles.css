@@ -200,6 +200,53 @@
   padding: 0;
 }
 
+#cms-smartling-panel .cms-smartling-layout-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+#cms-smartling-panel .cms-smartling-layout-toggle::before,
+#cms-smartling-panel .cms-smartling-layout-toggle::after {
+  content: "";
+  position: absolute;
+  border: 2px solid var(--sl-muted);
+  border-radius: 3px;
+}
+
+#cms-smartling-panel .cms-smartling-layout-toggle::before {
+  left: 7px;
+  top: 7px;
+  width: 12px;
+  height: 12px;
+}
+
+#cms-smartling-panel .cms-smartling-layout-toggle::after {
+  right: 6px;
+  top: 6px;
+  width: 4px;
+  height: 14px;
+  border-left: 0;
+  opacity: 0.62;
+}
+
+#cms-smartling-panel[data-layout="split"] .cms-smartling-layout-toggle::before {
+  left: 6px;
+  top: 5px;
+  width: 15px;
+  height: 16px;
+}
+
+#cms-smartling-panel[data-layout="split"] .cms-smartling-layout-toggle::after {
+  right: 6px;
+  top: 5px;
+  width: 4px;
+  height: 16px;
+  background: var(--sl-muted);
+  opacity: 0.78;
+}
+
 #cms-smartling-panel .cms-smartling-collapse::before {
   content: "";
   position: absolute;
@@ -219,7 +266,192 @@
 #cms-smartling-panel .cms-smartling-body {
   display: grid;
   gap: 12px;
+  grid-auto-rows: max-content;
+  align-content: start;
   padding: 14px;
+}
+
+html.cms-smartling-split-view-active {
+  --cms-smartling-split-width: clamp(380px, 34vw, 440px);
+}
+
+html.cms-smartling-split-view-active body {
+  margin-right: var(--cms-smartling-split-width) !important;
+  transition: margin-right 160ms ease;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--cms-smartling-split-width, 420px);
+  max-height: 100vh;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-card {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-top-width: 0;
+  border-right-width: 0;
+  border-bottom-width: 0;
+  border-radius: 0;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-body {
+  flex: 1;
+  overflow: auto;
+}
+
+#cms-smartling-panel .cms-smartling-source-overview,
+#cms-smartling-panel .cms-smartling-form-grid,
+#cms-smartling-panel .cms-smartling-review-grid,
+#cms-smartling-panel .cms-smartling-action-row {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-body {
+  gap: 14px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed)
+  .cms-smartling-body[data-panel-mode="source"] {
+  height: 100%;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-form-grid {
+  grid-template-columns: 1fr;
+  align-items: end;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-field-list {
+  gap: 8px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-field-option {
+  padding: 9px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-field-value {
+  max-height: 74px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-review-grid {
+  grid-template-columns: 1fr;
+  grid-auto-rows: max-content;
+  align-content: start;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed)
+  .cms-smartling-review-grid.is-recent-expanded {
+  align-items: start;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-field-list {
+  min-height: 0;
+  align-content: start;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-recent {
+  min-height: 0;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed)
+  .cms-smartling-recent.is-collapsed {
+  align-self: start;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed)
+  .cms-smartling-recent.is-expanded {
+  display: grid;
+  align-content: start;
+  overflow: auto;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-request-list {
+  max-height: min(32vh, 360px);
+  min-height: 0;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-recent-empty {
+  align-self: start;
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-action-row {
+  margin: 0 -14px;
+  border-top: 1px solid var(--sl-border);
+  padding: 12px 14px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.96)),
+    var(--sl-bg);
+  box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.06);
+}
+
+#cms-smartling-panel[data-theme="dark"][data-layout="split"]:not(.is-collapsed)
+  .cms-smartling-action-row {
+  background:
+    linear-gradient(180deg, rgba(18, 24, 33, 0.86), rgba(18, 24, 33, 0.98)),
+    var(--sl-bg);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.28);
+}
+
+#cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-primary {
+  align-self: start;
+  min-height: 42px;
+}
+
+@media (max-width: 900px) {
+  html.cms-smartling-split-view-active body {
+    margin-right: 0 !important;
+  }
+
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed) {
+    top: auto;
+    right: 18px;
+    bottom: 18px;
+    width: min(380px, calc(100vw - 36px));
+    max-height: calc(100vh - 36px);
+  }
+
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-card {
+    height: auto;
+    max-height: calc(100vh - 36px);
+    border: 1px solid var(--sl-border);
+    border-radius: 14px;
+  }
+
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-form-grid,
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed)
+    .cms-smartling-body[data-panel-mode="source"] {
+    height: auto;
+    grid-template-rows: none;
+    overflow: auto;
+    padding-bottom: 14px;
+  }
+
+  #cms-smartling-panel[data-layout="split"]:not(.is-collapsed) .cms-smartling-action-row {
+    margin: 0;
+    border-top: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
 }
 
 #cms-smartling-panel .cms-smartling-update-slot[hidden] {

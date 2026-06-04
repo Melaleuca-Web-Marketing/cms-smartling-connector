@@ -253,6 +253,17 @@ button:disabled {
   padding: 12px;
 }
 
+.jobs-pagination {
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--sl-border);
+  padding: 12px;
+}
+
+.jobs-pagination[hidden] {
+  display: none;
+}
+
 .job-card {
   display: grid;
   gap: 10px;

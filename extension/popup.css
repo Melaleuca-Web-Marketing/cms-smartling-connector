@@ -22,7 +22,7 @@
 }
 
 body {
-  width: 390px;
+  width: 450px;
   max-height: 620px;
   margin: 0;
   overflow-y: auto;
@@ -40,7 +40,7 @@ body {
 
 .popup-header {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr) 34px;
   gap: 10px;
   align-items: center;
   border: 1px solid var(--sl-border);
@@ -77,6 +77,54 @@ h1 {
   color: var(--sl-muted);
   font-size: 12px;
   line-height: 1.25;
+}
+
+.popup-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--sl-border);
+  border-radius: 9px;
+  padding: 0;
+  background: var(--sl-bg);
+  color: var(--sl-text);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.popup-icon-button:hover,
+.popup-icon-button.is-active {
+  border-color: var(--sl-border-strong);
+  background: var(--sl-brand-soft);
+}
+
+.popup-settings-button::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2px solid #334155;
+  border-radius: 50%;
+  box-shadow:
+    0 -6px 0 -4px #334155,
+    0 6px 0 -4px #334155,
+    6px 0 0 -4px #334155,
+    -6px 0 0 -4px #334155,
+    4px 4px 0 -4px #334155,
+    -4px 4px 0 -4px #334155,
+    4px -4px 0 -4px #334155,
+    -4px -4px 0 -4px #334155;
+}
+
+.popup-settings-button::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #334155;
 }
 
 .update-banner[hidden] {
@@ -128,7 +176,7 @@ h1 {
 
 .popup-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   border: 1px solid var(--sl-border);
   border-radius: 10px;

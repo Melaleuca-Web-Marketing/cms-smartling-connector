@@ -1,11 +1,28 @@
 const DEFAULT_API_BASE_URL = "https://usifhqtsagrqt01.melaleuca.net/cms-smartling";
 const FAVORITES_STORAGE_KEY = "smartlingRecentJobFavorites";
+const FILTERS_STORAGE_KEY = "smartlingRecentJobFilters";
+const DEFAULT_JOBS_LIMIT = 10;
+const DEFAULT_TYPE_FILTER = "custom";
+const DEFAULT_STATUS_FILTER = "ready";
+const READY_STATUS_VALUES = new Set(["translations_available", "published"]);
+const STATUS_FILTER_OPTIONS = [
+  { value: "ready", label: "Ready" },
+  { value: "submitted_to_smartling", label: "Submitted" },
+  { value: "smartling_error", label: "Error" },
+  { value: "stored_waiting_for_smartling", label: "Stored" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "published", label: "Published" }
+];
+const TARGET_LOCALE_OPTIONS = ["es-US", "fr-CA", "nl-NL", "de-DE", "de-AT", "pl-PL", "lt-LT", "it-IT"];
 
 let apiBaseUrl = DEFAULT_API_BASE_URL;
 let apiToken = "";
 let favoriteIds = new Set();
 let allJobs = [];
 let filteredJobs = [];
+let jobsTotal = 0;
+let jobsHasMore = false;
+let filterReloadTimer = null;
 
 const elements = {
   clearFilters: document.getElementById("clearFilters"),
@@ -14,6 +31,8 @@ const elements = {
   favoritesOnly: document.getElementById("favoritesOnly"),
   jobsCount: document.getElementById("jobsCount"),
   jobsList: document.getElementById("jobsList"),
+  loadMoreJobs: document.getElementById("loadMoreJobs"),
+  jobsPagination: document.querySelector(".jobs-pagination"),
   localeFilter: document.getElementById("localeFilter"),
   readyJobs: document.getElementById("readyJobs"),
   refreshJobs: document.getElementById("refreshJobs"),
@@ -38,6 +57,8 @@ async function init() {
   apiToken = String(stored.apiToken || "");
   favoriteIds = new Set(Array.isArray(stored[FAVORITES_STORAGE_KEY]) ? stored[FAVORITES_STORAGE_KEY] : []);
 
+  renderFilterOptions();
+  restoreFilters();
   wireEvents();
   checkForExtensionUpdates();
   await loadJobs();
@@ -45,24 +66,28 @@ async function init() {
 
 function wireEvents() {
   elements.refreshJobs.addEventListener("click", () => loadJobs({ forceSync: true }));
-  elements.searchJobs.addEventListener("input", applyFilters);
-  elements.typeFilter.addEventListener("change", applyFilters);
-  elements.statusFilter.addEventListener("change", applyFilters);
-  elements.localeFilter.addEventListener("change", applyFilters);
-  elements.sortJobs.addEventListener("change", applyFilters);
-  elements.favoritesOnly.addEventListener("change", applyFilters);
+  elements.loadMoreJobs.addEventListener("click", () => loadJobs({ append: true }));
+  elements.searchJobs.addEventListener("input", scheduleFilterReload);
+  elements.typeFilter.addEventListener("change", handleFilterChange);
+  elements.statusFilter.addEventListener("change", handleFilterChange);
+  elements.localeFilter.addEventListener("change", handleFilterChange);
+  elements.sortJobs.addEventListener("change", handleFilterChange);
+  elements.favoritesOnly.addEventListener("change", handleFilterChange);
   elements.clearFilters.addEventListener("click", clearFilters);
   elements.jobsList.addEventListener("click", handleJobAction);
 }
 
-async function loadJobs({ forceSync = false, skipSync = false } = {}) {
-  setStatus(skipSync ? "Loading recent jobs..." : "Syncing active Smartling jobs...");
+async function loadJobs({ forceSync = false, append = false } = {}) {
+  clearTimeout(filterReloadTimer);
+  setStatus(forceSync ? "Syncing active Smartling jobs..." : "Loading cached jobs...");
   elements.refreshJobs.disabled = true;
+  elements.loadMoreJobs.disabled = true;
   let syncSummary = null;
   let syncError = null;
+  const offset = append ? allJobs.length : 0;
 
   try {
-    if (!skipSync) {
+    if (forceSync) {
       try {
         syncSummary = await syncActiveJobs(forceSync);
       } catch (error) {
@@ -70,25 +95,161 @@ async function loadJobs({ forceSync = false, skipSync = false } = {}) {
       }
     }
 
-    const [customResponse, skuResponse] = await Promise.all([
-      apiFetch("/api/custom-translation-requests"),
-      apiFetch("/api/translation-requests")
-    ]);
+    const response = await loadJobPage(offset);
+    const pageJobs = (response.requests || []).map((request) => normalizeJob(request, request.requestType));
 
-    allJobs = [
-      ...(customResponse.requests || []).map((request) => normalizeJob(request, "custom")),
-      ...(skuResponse.requests || []).map((request) => normalizeJob(request, "sku"))
-    ].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    allJobs = append ? [...allJobs, ...pageJobs] : pageJobs;
+    jobsTotal = Number(response.total) || allJobs.length;
+    jobsHasMore = response.hasMore === true;
 
-    renderFilterOptions();
-    applyFilters();
-    setStatus(buildLoadStatusMessage(allJobs.length, syncSummary, syncError), syncError ? "error" : "success");
+    renderLoadedJobs();
+    setStatus(buildLoadStatusMessage(syncSummary, syncError), syncError ? "error" : "success");
   } catch (error) {
     elements.jobsList.innerHTML = `<div class="empty-state">Could not load recent jobs: ${escapeHtml(error.message)}</div>`;
+    elements.jobsPagination.hidden = true;
     elements.jobsCount.textContent = "Recent jobs are unavailable.";
     setStatus(error.message, "error");
   } finally {
     elements.refreshJobs.disabled = false;
+    elements.loadMoreJobs.disabled = false;
+  }
+}
+
+async function loadJobPage(offset) {
+  const params = buildJobsQueryParams(offset);
+
+  if (!params) {
+    return {
+      requests: [],
+      total: 0,
+      limit: DEFAULT_JOBS_LIMIT,
+      offset,
+      hasMore: false
+    };
+  }
+
+  return await apiFetch(`/api/jobs?${params.toString()}`);
+}
+
+function buildJobsQueryParams(offset) {
+  if (elements.favoritesOnly.checked && favoriteIds.size === 0) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    limit: String(DEFAULT_JOBS_LIMIT),
+    offset: String(offset),
+    sort: elements.sortJobs.value || "newest",
+    type: elements.typeFilter.value || "all"
+  });
+  const status = elements.statusFilter.value || "all";
+  const targetLocale = elements.localeFilter.value || "all";
+  const query = elements.searchJobs.value.trim();
+
+  if (status !== "all") {
+    params.set("statuses", status);
+  }
+
+  if (targetLocale !== "all") {
+    params.set("targetLocale", targetLocale);
+  }
+
+  if (query) {
+    params.set("q", query);
+  }
+
+  if (elements.favoritesOnly.checked) {
+    params.set("ids", [...favoriteIds].join(","));
+  }
+
+  return params;
+}
+
+function scheduleFilterReload() {
+  clearTimeout(filterReloadTimer);
+  saveFilters();
+  filterReloadTimer = setTimeout(() => loadJobs(), 250);
+}
+
+function handleFilterChange() {
+  saveFilters();
+  loadJobs();
+}
+
+function restoreFilters() {
+  applyFilterState(getSavedFilters() || getDefaultFilterState());
+}
+
+function getDefaultFilterState() {
+  return {
+    favoritesOnly: false,
+    locale: "all",
+    query: "",
+    sort: "newest",
+    status: DEFAULT_STATUS_FILTER,
+    type: DEFAULT_TYPE_FILTER
+  };
+}
+
+function setDefaultFilters() {
+  applyFilterState(getDefaultFilterState());
+}
+
+function applyFilterState(filters) {
+  const normalized = normalizeFilterState(filters);
+  elements.searchJobs.value = normalized.query;
+  elements.typeFilter.value = normalized.type;
+  elements.statusFilter.value = normalized.status;
+  elements.localeFilter.value = normalized.locale;
+  elements.sortJobs.value = normalized.sort;
+  elements.favoritesOnly.checked = normalized.favoritesOnly;
+}
+
+function getCurrentFilterState() {
+  return normalizeFilterState({
+    favoritesOnly: elements.favoritesOnly.checked,
+    locale: elements.localeFilter.value,
+    query: elements.searchJobs.value,
+    sort: elements.sortJobs.value,
+    status: elements.statusFilter.value,
+    type: elements.typeFilter.value
+  });
+}
+
+function normalizeFilterState(filters = {}) {
+  return {
+    favoritesOnly: filters.favoritesOnly === true,
+    locale: getAllowedFilterValue(filters.locale, ["all", ...TARGET_LOCALE_OPTIONS], "all"),
+    query: String(filters.query || "").slice(0, 250),
+    sort: getAllowedFilterValue(filters.sort, ["newest", "oldest", "name", "status"], "newest"),
+    status: getAllowedFilterValue(
+      filters.status,
+      ["all", ...STATUS_FILTER_OPTIONS.map((option) => option.value)],
+      DEFAULT_STATUS_FILTER
+    ),
+    type: getAllowedFilterValue(filters.type, ["all", "custom", "sku"], DEFAULT_TYPE_FILTER)
+  };
+}
+
+function getAllowedFilterValue(value, allowedValues, fallback) {
+  const normalized = String(value || "").trim();
+  return allowedValues.includes(normalized) ? normalized : fallback;
+}
+
+function getSavedFilters() {
+  try {
+    const raw = globalThis.localStorage?.getItem(FILTERS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveFilters() {
+  try {
+    globalThis.localStorage?.setItem(FILTERS_STORAGE_KEY, JSON.stringify(getCurrentFilterState()));
+  } catch {
+    // Filter persistence is a convenience; ignore localStorage failures.
   }
 }
 
@@ -104,15 +265,17 @@ async function syncActiveJobs(force) {
   return response.summary || null;
 }
 
-function buildLoadStatusMessage(jobCount, syncSummary, syncError) {
-  const loaded = `Loaded ${jobCount} job${jobCount === 1 ? "" : "s"}.`;
+function buildLoadStatusMessage(syncSummary, syncError) {
+  const shown = allJobs.length;
+  const descriptor = getCurrentFilterDescription();
+  const loaded = `Showing ${shown} of ${jobsTotal} ${descriptor}.`;
 
   if (syncError) {
     return `${loaded} Sync failed: ${syncError.message}`;
   }
 
   if (!syncSummary) {
-    return loaded;
+    return `${loaded} Cached results loaded.`;
   }
 
   return `${loaded} ${syncSummary.message || "Smartling sync checked active jobs."}`;
@@ -164,16 +327,13 @@ function renderFilterOptions() {
     elements.statusFilter,
     "all",
     "All statuses",
-    uniqueValues(allJobs.map((job) => job.status)).map((status) => ({
-      value: status,
-      label: getStatusLabel({ status })
-    }))
+    STATUS_FILTER_OPTIONS
   );
   renderSelectOptions(
     elements.localeFilter,
     "all",
     "All targets",
-    uniqueValues(allJobs.map((job) => job.targetLocale)).map((locale) => ({
+    TARGET_LOCALE_OPTIONS.map((locale) => ({
       value: locale,
       label: locale
     }))
@@ -194,57 +354,55 @@ function renderSelectOptions(select, allValue, allLabel, options) {
     : allValue;
 }
 
-function applyFilters() {
-  const query = elements.searchJobs.value.trim().toLowerCase();
-  const type = elements.typeFilter.value;
-  const status = elements.statusFilter.value;
-  const locale = elements.localeFilter.value;
-  const favoritesOnly = elements.favoritesOnly.checked;
-
-  filteredJobs = allJobs
-    .filter((job) => !query || job.searchText.includes(query))
-    .filter((job) => type === "all" || job.displayType === type)
-    .filter((job) => status === "all" || job.status === status)
-    .filter((job) => locale === "all" || job.targetLocale === locale)
-    .filter((job) => !favoritesOnly || favoriteIds.has(job.id));
-
-  sortJobs();
+function renderLoadedJobs() {
+  filteredJobs = allJobs.slice();
   renderStats();
   renderJobs();
 }
 
-function sortJobs() {
-  const sortMode = elements.sortJobs.value;
-  const compareDate = (a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
-
-  filteredJobs.sort((a, b) => {
-    if (sortMode === "oldest") return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-    if (sortMode === "name") return String(a.jobName || a.id).localeCompare(String(b.jobName || b.id));
-    if (sortMode === "status") return getStatusLabel(a).localeCompare(getStatusLabel(b)) || compareDate(a, b);
-    return compareDate(a, b);
-  });
-}
-
 function renderStats() {
-  const favoriteCount = allJobs.filter((job) => favoriteIds.has(job.id)).length;
-  elements.totalJobs.textContent = String(allJobs.length);
-  elements.customJobs.textContent = String(allJobs.filter((job) => job.displayType === "custom").length);
-  elements.readyJobs.textContent = String(
-    allJobs.filter((job) => job.status === "translations_available" || job.status === "published").length
+  const typeFilter = elements.typeFilter.value;
+  const statusFilter = elements.statusFilter.value;
+
+  elements.totalJobs.textContent = String(jobsTotal);
+  elements.customJobs.textContent = String(
+    typeFilter === "custom" ? jobsTotal : allJobs.filter((job) => job.displayType === "custom").length
   );
-  elements.favoriteJobs.textContent = String(favoriteCount);
-  elements.jobsCount.textContent = `${filteredJobs.length} of ${allJobs.length} job${
-    allJobs.length === 1 ? "" : "s"
-  } shown.`;
+  elements.readyJobs.textContent = String(
+    statusFilter === "ready"
+      ? jobsTotal
+      : allJobs.filter((job) => READY_STATUS_VALUES.has(job.status)).length
+  );
+  elements.favoriteJobs.textContent = String(favoriteIds.size);
+  elements.jobsCount.textContent = `Showing ${filteredJobs.length} of ${jobsTotal} ${getCurrentFilterDescription()}.`;
 }
 
 function renderJobs() {
   if (!filteredJobs.length) {
     elements.jobsList.innerHTML = '<div class="empty-state">No jobs match the current filters.</div>';
+    elements.jobsPagination.hidden = true;
     return;
   }
 
   elements.jobsList.innerHTML = filteredJobs.map(renderJobCard).join("");
+  elements.jobsPagination.hidden = !jobsHasMore;
+}
+
+function getCurrentFilterDescription() {
+  const type = elements.typeFilter.value;
+  const status = elements.statusFilter.value;
+  const typeLabel =
+    type === "custom" ? "custom jobs" : type === "sku" ? "SKU jobs" : "jobs";
+
+  if (status === "ready") {
+    return `ready ${typeLabel}`;
+  }
+
+  if (status !== "all") {
+    return `${getStatusLabel({ status }).toLowerCase()} ${typeLabel}`;
+  }
+
+  return typeLabel;
 }
 
 function renderJobCard(job) {
@@ -342,7 +500,13 @@ async function toggleFavorite(requestId) {
   await setExtensionStorage({
     [FAVORITES_STORAGE_KEY]: [...favoriteIds]
   });
-  applyFilters();
+
+  if (elements.favoritesOnly.checked) {
+    await loadJobs();
+    return;
+  }
+
+  renderLoadedJobs();
 }
 
 async function syncJob(requestId, button) {
@@ -377,7 +541,7 @@ async function syncJob(requestId, button) {
       setStatus(request.import?.message || "Translations were not imported yet.", "error");
     }
 
-    await loadJobs({ skipSync: true });
+    await loadJobs();
   } catch (error) {
     setStatus(error.message, "error");
   } finally {
@@ -386,13 +550,9 @@ async function syncJob(requestId, button) {
 }
 
 function clearFilters() {
-  elements.searchJobs.value = "";
-  elements.typeFilter.value = "all";
-  elements.statusFilter.value = "all";
-  elements.localeFilter.value = "all";
-  elements.sortJobs.value = "newest";
-  elements.favoritesOnly.checked = false;
-  applyFilters();
+  setDefaultFilters();
+  saveFilters();
+  loadJobs();
 }
 
 async function apiFetch(path, options = {}) {

@@ -1,6 +1,7 @@
 const DEFAULT_API_BASE_URL =
   "https://usifhqtsagrqt01.melaleuca.net/cms-smartling";
 const CUSTOM_DRAFT_STORAGE_KEY = "smartlingCustomJobDraft";
+const DEFAULT_PANEL_LAYOUT = "overlay";
 let draftSaveTimer = null;
 let restoringDraft = false;
 
@@ -11,6 +12,8 @@ const backendState = document.getElementById("backendState");
 const backendDetails = document.getElementById("backendDetails");
 const smartlingSummary = document.getElementById("smartlingSummary");
 const updateBanner = document.getElementById("updateBanner");
+const settingsButton = document.getElementById("openSettings");
+const panelLayout = document.getElementById("panelLayout");
 const customJobPrefix = document.getElementById("customJobPrefix");
 const customJobName = document.getElementById("customJobName");
 const customJobSuffix = document.getElementById("customJobSuffix");
@@ -26,11 +29,13 @@ chrome.storage.local.get(
   {
     apiBaseUrl: DEFAULT_API_BASE_URL,
     apiToken: "",
+    smartlingPanelLayout: DEFAULT_PANEL_LAYOUT,
     [CUSTOM_DRAFT_STORAGE_KEY]: null,
   },
   (items) => {
     input.value = items.apiBaseUrl || DEFAULT_API_BASE_URL;
     apiTokenInput.value = items.apiToken || "";
+    panelLayout.value = normalizePanelLayout(items.smartlingPanelLayout);
     initCustomJobForm(items[CUSTOM_DRAFT_STORAGE_KEY]);
     checkForExtensionUpdates();
   },
@@ -61,6 +66,7 @@ document
 document
   .getElementById("resetPanel")
   .addEventListener("click", resetPanelState);
+panelLayout.addEventListener("change", savePanelLayout);
 document
   .getElementById("addCustomString")
   .addEventListener("click", () => addCustomStringRow());
@@ -73,6 +79,8 @@ document
 document
   .getElementById("openRecentJobs")
   .addEventListener("click", openRecentJobsPage);
+settingsButton.addEventListener("click", () => activatePopupSection("settings"));
+chrome.storage?.onChanged?.addListener(handleSettingsChanged);
 customProject.addEventListener("change", () => {
   const project = getSelectedProject();
   customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
@@ -139,15 +147,37 @@ function resetPanelState() {
   chrome.storage.local.set(
     {
       smartlingPanelTheme: "light",
+      smartlingPanelLayout: DEFAULT_PANEL_LAYOUT,
       smartlingRecentRequestsCollapsed: true,
     },
     () => {
+      panelLayout.value = DEFAULT_PANEL_LAYOUT;
       setStatus(
-        "Panel state reset. Refresh the CMS page if it is already open.",
+        "Panel state reset. Refresh the CMS page if it does not update.",
         "success",
       );
     },
   );
+}
+
+function savePanelLayout() {
+  const layout = normalizePanelLayout(panelLayout.value);
+  chrome.storage.local.set({ smartlingPanelLayout: layout }, () => {
+    panelLayout.value = layout;
+    setStatus("Panel layout saved.", "success");
+  });
+}
+
+function normalizePanelLayout(value) {
+  return value === "split" ? "split" : DEFAULT_PANEL_LAYOUT;
+}
+
+function handleSettingsChanged(changes, areaName) {
+  if (areaName !== "local" || !changes.smartlingPanelLayout) {
+    return;
+  }
+
+  panelLayout.value = normalizePanelLayout(changes.smartlingPanelLayout.newValue);
 }
 
 async function checkForExtensionUpdates() {
@@ -188,19 +218,23 @@ function renderUpdateBanner(updateInfo) {
 }
 
 function wireTabs() {
-  document.querySelectorAll(".tab-button").forEach((button) => {
+  document.querySelectorAll(".tab-button[data-tab]").forEach((button) => {
     button.addEventListener("click", () => {
-      const tab = button.dataset.tab;
-      if (!tab) {
-        return;
-      }
-      document.querySelectorAll(".tab-button").forEach((item) => {
-        item.classList.toggle("is-active", item === button);
-      });
-      document.querySelectorAll(".tab-panel").forEach((panel) => {
-        panel.classList.toggle("is-active", panel.id === `tab-${tab}`);
-      });
+      activatePopupSection(button.dataset.tab);
     });
+  });
+}
+
+function activatePopupSection(tab) {
+  document.querySelectorAll(".tab-button").forEach((item) => {
+    item.classList.toggle("is-active", item.dataset.tab === tab);
+  });
+
+  settingsButton.classList.toggle("is-active", tab === "settings");
+  settingsButton.setAttribute("aria-pressed", String(tab === "settings"));
+
+  document.querySelectorAll(".tab-panel").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.id === `tab-${tab}`);
   });
 }
 

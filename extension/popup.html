@@ -13,6 +13,14 @@
           <h1>Smartling</h1>
           <p>CMS product copy assistant</p>
         </div>
+        <button
+          id="openSettings"
+          class="popup-icon-button popup-settings-button"
+          type="button"
+          aria-label="Open settings"
+          aria-pressed="false"
+          title="Settings"
+        ></button>
       </header>
 
       <div
@@ -32,9 +40,6 @@
         </button>
         <button class="tab-button" type="button" id="openRecentJobs">
           Recent Jobs
-        </button>
-        <button class="tab-button" type="button" data-tab="settings">
-          Settings
         </button>
       </nav>
 
@@ -221,12 +226,21 @@
           <div class="section-title">
             <h2>Panel State</h2>
           </div>
+          <label for="panelLayout">CMS panel layout</label>
+          <select id="panelLayout">
+            <option value="overlay">Bottom-right overlay</option>
+            <option value="split">Right-side split view</option>
+          </select>
+          <p class="small-note">
+            This can also be changed from the CMS panel header. Split view
+            keeps the panel full height on wider CMS pages.
+          </p>
           <button id="resetPanel" type="button" class="secondary full-width">
             Reset panel state
           </button>
           <p class="small-note">
-            Restores light theme, collapsed launcher, and collapsed Recent
-            Requests.
+            Restores overlay layout, light theme, collapsed launcher, and
+            collapsed Recent Requests.
           </p>
         </section>
       </section>

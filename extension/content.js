@@ -4,9 +4,15 @@ const CMS_ALLOWED_HOSTS = new Set([
   "usifhqtsagrqt01.melaleuca.net"
 ]);
 
+const DEFAULT_PANEL_LAYOUT = "overlay";
+
 const MANAGED_FIELDS = new Map([
-  ["product name", "productName"],
-  ["description (short)", "descriptionShort"]
+  ["product name", { fieldKey: "productName", selectedByDefault: true, displayOrder: 10 }],
+  ["description (short)", { fieldKey: "descriptionShort", selectedByDefault: true, displayOrder: 20 }],
+  [
+    "unit of measure title",
+    { fieldKey: "unitOfMeasureTitle", selectedByDefault: false, displayOrder: 30 }
+  ]
 ]);
 
 const ROUTES = [
@@ -75,6 +81,7 @@ let apiToken = "";
 let ignoreMutationsUntil = 0;
 let panelCollapsed = true;
 let panelTheme = "light";
+let panelLayout = DEFAULT_PANEL_LAYOUT;
 let recentRequestsCollapsed = true;
 let activePanelSku = null;
 let extensionUpdateInfo = null;
@@ -100,7 +107,9 @@ async function init() {
   apiToken = settings.apiToken;
   panelCollapsed = true;
   panelTheme = settings.panelTheme;
+  panelLayout = settings.panelLayout;
   recentRequestsCollapsed = settings.recentRequestsCollapsed;
+  globalThis.chrome?.storage?.onChanged?.addListener(handleExtensionSettingsChanged);
   checkForExtensionUpdates();
   scheduleScan();
 
@@ -123,6 +132,7 @@ function getExtensionSettings() {
         apiBaseUrl: DEFAULT_API_BASE_URL,
         apiToken: "",
         panelTheme: "light",
+        panelLayout: DEFAULT_PANEL_LAYOUT,
         recentRequestsCollapsed: true
       });
       return;
@@ -133,6 +143,7 @@ function getExtensionSettings() {
         apiBaseUrl: DEFAULT_API_BASE_URL,
         apiToken: "",
         smartlingPanelTheme: "light",
+        smartlingPanelLayout: DEFAULT_PANEL_LAYOUT,
         smartlingRecentRequestsCollapsed: true
       },
       (items) => {
@@ -140,11 +151,40 @@ function getExtensionSettings() {
           apiBaseUrl: items.apiBaseUrl || DEFAULT_API_BASE_URL,
           apiToken: items.apiToken || "",
           panelTheme: items.smartlingPanelTheme === "dark" ? "dark" : "light",
+          panelLayout: normalizePanelLayout(items.smartlingPanelLayout),
           recentRequestsCollapsed: items.smartlingRecentRequestsCollapsed !== false
         });
       }
     );
   });
+}
+
+function handleExtensionSettingsChanged(changes, areaName) {
+  if (areaName !== "local") {
+    return;
+  }
+
+  if (changes.apiBaseUrl) {
+    apiBaseUrl = changes.apiBaseUrl.newValue || DEFAULT_API_BASE_URL;
+  }
+
+  if (changes.apiToken) {
+    apiToken = changes.apiToken.newValue || "";
+  }
+
+  if (changes.smartlingPanelTheme) {
+    panelTheme = changes.smartlingPanelTheme.newValue === "dark" ? "dark" : "light";
+  }
+
+  if (changes.smartlingPanelLayout) {
+    panelLayout = normalizePanelLayout(changes.smartlingPanelLayout.newValue);
+  }
+
+  if (changes.smartlingRecentRequestsCollapsed) {
+    recentRequestsCollapsed = changes.smartlingRecentRequestsCollapsed.newValue !== false;
+  }
+
+  applyPanelShellState();
 }
 
 function scheduleScan() {
@@ -298,7 +338,8 @@ function getTranslatableFields() {
       const label = normalizeFieldName(
         row.querySelector(".left-label p, #primaryLabel")?.textContent
       );
-      const fieldKey = getManagedFieldKey(label);
+      const managedField = getManagedField(label);
+      const fieldKey = managedField?.fieldKey;
       const control = row.querySelector(
         ".v-text-field__slot input:not([type='hidden']), .v-text-field__slot textarea"
       );
@@ -312,12 +353,18 @@ function getTranslatableFields() {
         row,
         fieldKey,
         fieldLabel: label,
+        selectedByDefault: managedField.selectedByDefault !== false,
+        displayOrder: managedField.displayOrder ?? 999,
         culture,
         control,
         value: control.value || ""
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((fieldA, fieldB) => {
+      const orderDifference = fieldA.displayOrder - fieldB.displayOrder;
+      return orderDifference || fieldA.fieldLabel.localeCompare(fieldB.fieldLabel);
+    });
 }
 
 function normalizeFieldName(value) {
@@ -327,8 +374,12 @@ function normalizeFieldName(value) {
     .trim();
 }
 
-function getManagedFieldKey(label) {
+function getManagedField(label) {
   return MANAGED_FIELDS.get(normalizeFieldName(label).toLowerCase()) || null;
+}
+
+function normalizePanelLayout(value) {
+  return value === "split" ? "split" : DEFAULT_PANEL_LAYOUT;
 }
 
 function getCultureFromFields(fields) {
@@ -370,6 +421,13 @@ function ensurePanel() {
           ></button>
           <button
             type="button"
+            class="cms-smartling-icon-button cms-smartling-layout-toggle"
+            id="cms-smartling-layout-toggle"
+            aria-label="Toggle panel layout"
+            title="Toggle panel layout"
+          ></button>
+          <button
+            type="button"
             class="cms-smartling-icon-button cms-smartling-collapse"
             id="cms-smartling-collapse"
             aria-label="Collapse Smartling panel"
@@ -391,11 +449,15 @@ function ensurePanel() {
   panel
     .querySelector("#cms-smartling-theme-toggle")
     ?.addEventListener("click", togglePanelTheme);
+  panel
+    .querySelector("#cms-smartling-layout-toggle")
+    ?.addEventListener("click", togglePanelLayout);
   applyPanelShellState();
 }
 
 function removePanel() {
   document.getElementById("cms-smartling-panel")?.remove();
+  document.documentElement.classList.remove("cms-smartling-split-view-active");
 }
 
 function setPanelCollapsed(collapsed) {
@@ -410,6 +472,12 @@ function togglePanelTheme() {
   savePanelSetting({ smartlingPanelTheme: panelTheme });
 }
 
+function togglePanelLayout() {
+  panelLayout = panelLayout === "split" ? "overlay" : "split";
+  applyPanelShellState();
+  savePanelSetting({ smartlingPanelLayout: panelLayout });
+}
+
 function savePanelSetting(values) {
   if (!globalThis.chrome?.storage?.local) {
     return;
@@ -419,10 +487,18 @@ function savePanelSetting(values) {
 
 function applyPanelShellState() {
   const panel = document.getElementById("cms-smartling-panel");
-  if (!panel) return;
+  if (!panel) {
+    document.documentElement.classList.remove("cms-smartling-split-view-active");
+    return;
+  }
 
   panel.dataset.theme = panelTheme;
+  panel.dataset.layout = panelLayout;
   panel.classList.toggle("is-collapsed", panelCollapsed);
+  document.documentElement.classList.toggle(
+    "cms-smartling-split-view-active",
+    panelLayout === "split" && !panelCollapsed
+  );
 
   const themeToggle = panel.querySelector("#cms-smartling-theme-toggle");
   if (themeToggle) {
@@ -431,6 +507,17 @@ function applyPanelShellState() {
     themeToggle.setAttribute(
       "aria-label",
       panelTheme === "dark" ? "Use light theme" : "Use dark theme"
+    );
+  }
+
+  const layoutToggle = panel.querySelector("#cms-smartling-layout-toggle");
+  if (layoutToggle) {
+    const isSplit = panelLayout === "split";
+    layoutToggle.setAttribute("aria-pressed", String(isSplit));
+    layoutToggle.title = isSplit ? "Use bottom-right overlay" : "Use right-side split view";
+    layoutToggle.setAttribute(
+      "aria-label",
+      isSplit ? "Use bottom-right overlay" : "Use right-side split view"
     );
   }
 }
@@ -499,6 +586,7 @@ function renderPanel(context, fields) {
 
   const body = panel.querySelector(".cms-smartling-body");
   const ready = Boolean(context.sku && context.activeLocale && fields.length);
+  body.dataset.panelMode = ready ? context.mode : "pending";
 
   if (!ready) {
     const foundFields = fields.map((field) => `${field.fieldLabel} (${field.culture || "?"})`);
@@ -518,32 +606,36 @@ function renderPanel(context, fields) {
   if (context.mode === "source") {
     const panelState = getSourcePanelState(context, fields);
     body.innerHTML = `
-      <div class="cms-smartling-summary">
-        <span>SKU ${escapeHtml(context.sku)}</span>
-        <span>${escapeHtml(context.activeLocale)} to ${escapeHtml(
-          getTargetSummary(context.sourceRoutes)
-        )}</span>
+      <div class="cms-smartling-source-overview">
+        <div class="cms-smartling-summary">
+          <span>SKU ${escapeHtml(context.sku)}</span>
+          <span>${escapeHtml(context.activeLocale)} to ${escapeHtml(
+            getTargetSummary(context.sourceRoutes)
+          )}</span>
+        </div>
+        ${renderTargetLocaleOptions(context, panelState)}
       </div>
-      ${renderTargetLocaleOptions(context, panelState)}
-      <div class="cms-smartling-form-row">
-        <label class="cms-smartling-label" for="cms-smartling-job-name">Job name</label>
-        <input
-          class="cms-smartling-input"
-          id="cms-smartling-job-name"
-          type="text"
-          spellcheck="false"
-          value="${escapeAttribute(panelState.jobName)}"
-        >
-      </div>
-      <div class="cms-smartling-form-row">
-        <label class="cms-smartling-label" for="cms-smartling-due-date">Job due date</label>
-        <input
-          class="cms-smartling-input"
-          id="cms-smartling-due-date"
-          type="datetime-local"
-          value="${escapeAttribute(panelState.jobDueDateLocal)}"
-          required
-        >
+      <div class="cms-smartling-form-grid">
+        <div class="cms-smartling-form-row">
+          <label class="cms-smartling-label" for="cms-smartling-job-name">Job name</label>
+          <input
+            class="cms-smartling-input"
+            id="cms-smartling-job-name"
+            type="text"
+            spellcheck="false"
+            value="${escapeAttribute(panelState.jobName)}"
+          >
+        </div>
+        <div class="cms-smartling-form-row">
+          <label class="cms-smartling-label" for="cms-smartling-due-date">Job due date</label>
+          <input
+            class="cms-smartling-input"
+            id="cms-smartling-due-date"
+            type="datetime-local"
+            value="${escapeAttribute(panelState.jobDueDateLocal)}"
+            required
+          >
+        </div>
       </div>
       <label class="cms-smartling-checkrow" for="cms-smartling-authorize-job">
         <input id="cms-smartling-authorize-job" type="checkbox" ${
@@ -551,18 +643,22 @@ function renderPanel(context, fields) {
         }>
         <span>Authorize job after submission</span>
       </label>
-      <div class="cms-smartling-field-list">
-        ${fields
-          .map((field) => renderSourceFieldOption(field, panelState.selectedFields))
-          .join("")}
+      <div class="${getReviewGridClassName()}">
+        <div class="cms-smartling-field-list">
+          ${fields
+            .map((field) => renderSourceFieldOption(field, panelState.selectedFields))
+            .join("")}
+        </div>
+        <div class="${getRecentRequestsClassName()}" id="cms-smartling-recent">
+          ${renderRecentRequests(context)}
+        </div>
       </div>
-      <div class="cms-smartling-recent" id="cms-smartling-recent">
-        ${renderRecentRequests(context)}
+      <div class="cms-smartling-action-row">
+        <button type="button" class="cms-smartling-primary" id="cms-smartling-submit">
+          Send to Smartling
+        </button>
+        <div class="cms-smartling-status" id="cms-smartling-status"></div>
       </div>
-      <button type="button" class="cms-smartling-primary" id="cms-smartling-submit">
-        Send to Smartling
-      </button>
-      <div class="cms-smartling-status" id="cms-smartling-status"></div>
     `;
     body.dataset.requestContext = getRequestContextKey(context);
     body.querySelector("#cms-smartling-submit")?.addEventListener("click", submitSourceFields);
@@ -768,7 +864,9 @@ function getSourcePanelState(context, fields) {
       `.cms-smartling-field-check[data-field-key="${field.fieldKey}"]`
     );
     selectedFields[field.fieldKey] =
-      sameContext && existingCheck ? existingCheck.checked : Boolean(field.control.value.trim());
+      sameContext && existingCheck
+        ? existingCheck.checked
+        : field.selectedByDefault !== false && Boolean(field.control.value.trim());
   }
 
   const routes = context.sourceRoutes?.length ? context.sourceRoutes : [context.route];
@@ -874,7 +972,8 @@ function renderRecentRequests(context) {
 
   const allRequests = getRelevantRecentRequests(context);
   const requests = getVisibleRecentRequests(context, allRequests);
-  const hiddenCount = allRequests.length - requests.length;
+  const displayedRequests = requests.slice(0, getRecentRequestDisplayLimit());
+  const hiddenCount = allRequests.length - displayedRequests.length;
   const count = requests.length;
 
   if (!requests.length) {
@@ -894,7 +993,7 @@ function renderRecentRequests(context) {
       recentRequestsCollapsed
         ? ""
         : `<div class="cms-smartling-request-list">
-            ${requests.slice(0, 5).map(renderRecentRequestItem).join("")}
+            ${displayedRequests.map(renderRecentRequestItem).join("")}
             ${
               hiddenCount > 0
                 ? `<div class="cms-smartling-recent-empty">${hiddenCount} older request${
@@ -905,6 +1004,33 @@ function renderRecentRequests(context) {
           </div>`
     }
   `;
+}
+
+function getRecentRequestDisplayLimit() {
+  return panelLayout === "split" && !panelCollapsed ? 8 : 5;
+}
+
+function getReviewGridClassName() {
+  return `cms-smartling-review-grid ${
+    recentRequestsCollapsed ? "is-recent-collapsed" : "is-recent-expanded"
+  }`;
+}
+
+function getRecentRequestsClassName() {
+  return `cms-smartling-recent ${recentRequestsCollapsed ? "is-collapsed" : "is-expanded"}`;
+}
+
+function syncRecentRequestLayoutClasses() {
+  const reviewGrid = document.querySelector("#cms-smartling-panel .cms-smartling-review-grid");
+  const recentElement = document.getElementById("cms-smartling-recent");
+
+  if (reviewGrid) {
+    reviewGrid.className = getReviewGridClassName();
+  }
+
+  if (recentElement) {
+    recentElement.className = getRecentRequestsClassName();
+  }
 }
 
 function renderRecentRequestsHeader(count, refreshText = "Refresh") {
@@ -1262,6 +1388,7 @@ async function refreshRecentRequests(context, { forceSync = false, sync = true }
     error: null
   };
   if (recentElement) {
+    syncRecentRequestLayoutClasses();
     recentElement.innerHTML = renderRecentRequests(context);
   }
 
@@ -1297,6 +1424,7 @@ async function refreshRecentRequests(context, { forceSync = false, sync = true }
 
   const nextRecentElement = document.getElementById("cms-smartling-recent");
   if (nextRecentElement) {
+    syncRecentRequestLayoutClasses();
     nextRecentElement.innerHTML = renderRecentRequests(context);
     wireRecentRequestActions(context);
   }
@@ -1308,6 +1436,7 @@ function wireRecentRequestActions(context) {
     savePanelSetting({ smartlingRecentRequestsCollapsed: recentRequestsCollapsed });
     const recentElement = document.getElementById("cms-smartling-recent");
     if (recentElement) {
+      syncRecentRequestLayoutClasses();
       recentElement.innerHTML = renderRecentRequests(context);
       wireRecentRequestActions(context);
     }

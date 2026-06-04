@@ -31,10 +31,13 @@ const CORS_ALLOWED_METHODS = "GET, POST, OPTIONS";
 const BACKEND_API_TOKEN = String(env.BACKEND_API_TOKEN || "").trim();
 const corsHeadersByResponse = new WeakMap();
 const MAX_SMARTLING_JOB_DESCRIPTION_LENGTH = 8000;
+const DEFAULT_JOBS_PAGE_LIMIT = 10;
+const MAX_JOBS_PAGE_LIMIT = 100;
 const DEFAULT_SMARTLING_SYNC_INTERVAL_MINUTES = 60;
 const DEFAULT_SMARTLING_SYNC_LOOKBACK_DAYS = 30;
 const DEFAULT_SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES = 5;
 const SYNCABLE_REQUEST_STATUSES = new Set(["submitted_to_smartling"]);
+const READY_REQUEST_STATUSES = ["translations_available", "published"];
 const SMARTLING_CANCELLED_STATUSES = new Set(["CANCELLED", "DELETED"]);
 
 const FIELD_CONFIG = {
@@ -44,6 +47,10 @@ const FIELD_CONFIG = {
   },
   descriptionShort: {
     label: "Description (Short)",
+    required: false
+  },
+  unitOfMeasureTitle: {
+    label: "Unit of Measure Title",
     required: false
   }
 };
@@ -320,6 +327,7 @@ function fieldKeyFromLabel(label) {
   const normalized = normalizeLabel(label).toLowerCase();
   if (normalized === "product name") return "productName";
   if (normalized === "description (short)") return "descriptionShort";
+  if (normalized === "unit of measure title") return "unitOfMeasureTitle";
   return null;
 }
 
@@ -483,6 +491,190 @@ function attachTranslationsToCustomRequests(store, requests) {
       }))
     };
   });
+}
+
+async function handleListJobs(res, url) {
+  const store = await loadStore();
+  const filters = getJobListFilters(url);
+  const customTranslationSearchTextByRequest = filters.q
+    ? getCustomTranslationSearchTextByRequest(store)
+    : new Map();
+  const requests = store.requests
+    .filter((request) =>
+      requestMatchesJobListFilters(request, filters, customTranslationSearchTextByRequest)
+    )
+    .sort((a, b) => compareJobListRequests(a, b, filters.sort));
+  const total = requests.length;
+  const pageRequests = requests.slice(filters.offset, filters.offset + filters.limit);
+
+  return sendJson(res, 200, {
+    requests: attachTranslationsToCustomRequests(store, pageRequests),
+    total,
+    limit: filters.limit,
+    offset: filters.offset,
+    hasMore: filters.offset + filters.limit < total
+  });
+}
+
+function getJobListFilters(url) {
+  return {
+    ids: getCsvQuerySet(url, "ids"),
+    limit: getBoundedIntegerQuery(url, "limit", DEFAULT_JOBS_PAGE_LIMIT, 1, MAX_JOBS_PAGE_LIMIT),
+    offset: getBoundedIntegerQuery(url, "offset", 0, 0, Number.MAX_SAFE_INTEGER),
+    q: String(url.searchParams.get("q") || "").trim().toLowerCase(),
+    sort: normalizeJobListSort(url.searchParams.get("sort")),
+    statuses: normalizeJobListStatuses(url),
+    targetLocale: String(url.searchParams.get("targetLocale") || "").trim(),
+    type: normalizeJobListType(url.searchParams.get("type"))
+  };
+}
+
+function getCsvQuerySet(url, name) {
+  return new Set(
+    url.searchParams
+      .getAll(name)
+      .flatMap((value) => String(value || "").split(","))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  );
+}
+
+function getBoundedIntegerQuery(url, name, fallback, min, max) {
+  const value = Number.parseInt(url.searchParams.get(name), 10);
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeJobListType(value) {
+  const type = String(value || "all").trim().toLowerCase();
+  return ["custom", "sku", "all"].includes(type) ? type : "all";
+}
+
+function normalizeJobListSort(value) {
+  const sort = String(value || "newest").trim().toLowerCase();
+  return ["newest", "oldest", "name", "status"].includes(sort) ? sort : "newest";
+}
+
+function normalizeJobListStatuses(url) {
+  const values = [
+    ...url.searchParams.getAll("status"),
+    ...url.searchParams.getAll("statuses")
+  ].flatMap((value) => String(value || "").split(","));
+  const statuses = new Set();
+
+  for (const value of values) {
+    const status = value.trim();
+    if (!status || status === "all") {
+      continue;
+    }
+
+    if (status === "ready") {
+      READY_REQUEST_STATUSES.forEach((readyStatus) => statuses.add(readyStatus));
+      continue;
+    }
+
+    statuses.add(status);
+  }
+
+  return statuses;
+}
+
+function requestMatchesJobListFilters(request, filters, customTranslationSearchTextByRequest) {
+  if (filters.ids.size && !filters.ids.has(request.id)) {
+    return false;
+  }
+
+  if (filters.type === "custom" && request.requestType !== "custom") {
+    return false;
+  }
+
+  if (filters.type === "sku" && request.requestType === "custom") {
+    return false;
+  }
+
+  if (filters.statuses.size && !filters.statuses.has(request.status)) {
+    return false;
+  }
+
+  if (filters.targetLocale && request.targetLocale !== filters.targetLocale) {
+    return false;
+  }
+
+  if (
+    filters.q &&
+    !`${getJobListSearchText(request)} ${customTranslationSearchTextByRequest.get(request.id) || ""}`
+      .includes(filters.q)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function getCustomTranslationSearchTextByRequest(store) {
+  const searchTextByRequest = new Map();
+
+  for (const translation of store.translations) {
+    if (translation.requestType !== "custom") {
+      continue;
+    }
+
+    const values = searchTextByRequest.get(translation.requestId) || [];
+    values.push(translation.translatedText, translation.fieldLabel, translation.fieldKey);
+    searchTextByRequest.set(translation.requestId, values);
+  }
+
+  return new Map(
+    [...searchTextByRequest.entries()].map(([requestId, values]) => [
+      requestId,
+      values.filter(Boolean).join(" ").toLowerCase()
+    ])
+  );
+}
+
+function getJobListSearchText(request) {
+  return [
+    request.id,
+    request.jobName,
+    request.jobDescription,
+    request.referenceNumber,
+    request.sku,
+    request.sourceLocale,
+    request.targetLocale,
+    request.smartling?.translationJobUid,
+    request.smartlingJobStatus?.jobStatus,
+    ...(request.fields || []).flatMap((field) => [
+      field.fieldKey,
+      field.fieldLabel,
+      field.label,
+      field.sourceText,
+      field.translatedText
+    ])
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function compareJobListRequests(a, b, sort) {
+  const compareDateDescending = () => String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+
+  if (sort === "oldest") {
+    return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+  }
+
+  if (sort === "name") {
+    return String(a.jobName || a.id || "").localeCompare(String(b.jobName || b.id || "")) || compareDateDescending();
+  }
+
+  if (sort === "status") {
+    return String(a.status || "").localeCompare(String(b.status || "")) || compareDateDescending();
+  }
+
+  return compareDateDescending();
 }
 
 function mapDownloadedTranslations(request, translatedFile) {
@@ -1424,6 +1616,10 @@ async function handleRequest(req, res) {
         ...getSmartlingRuntimeStatus(),
         sync: getSmartlingSyncRuntimeStatus()
       });
+    }
+
+    if (req.method === "GET" && pathname === "/api/jobs") {
+      return await handleListJobs(res, url);
     }
 
     if (req.method === "POST" && pathname === "/api/translation-requests/sync") {

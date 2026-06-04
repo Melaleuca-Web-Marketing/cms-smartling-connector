@@ -81,7 +81,7 @@ SMARTLING_SYNC_LOOKBACK_DAYS=30
 SMARTLING_SYNC_MIN_CHECK_INTERVAL_MINUTES=5
 ```
 
-The sync detects Smartling jobs that were cancelled or deleted, keeps progress feedback current, and stages published translations when files are ready. The Recent Jobs dashboard also runs a sync when opened or refreshed, so users do not need to click a separate check button for normal updates.
+The sync detects Smartling jobs that were cancelled or deleted, keeps progress feedback current, and stages published translations when files are ready. The Recent Jobs dashboard loads cached ready custom jobs by default for faster startup, remembers filter selections locally, and lets users click Refresh when they want to sync Smartling statuses.
 
 ## Build Browser Extensions
 
@@ -177,7 +177,7 @@ Internal server release flow:
 
 Firefox Manifest V3 host permissions are user-controlled. If the panel does not appear on the CMS page, open Firefox's extensions button and grant the assistant access to the current site.
 
-The extension starts collapsed as a circular Smartling logo button in the lower-right corner. Open it to use the workflow panel. The panel header includes a dark/light theme toggle and a collapse control.
+The extension starts collapsed as a circular Smartling logo button in the lower-right corner. Open it to use the workflow panel. The panel header includes dark/light theme, layout, and collapse controls. The layout control and popup Settings tab can switch the CMS panel between the default bottom-right overlay and a right-side split view on wider CMS pages.
 
 For production, keep the `content_scripts.matches` value in `extension/manifest.json` and `extension/manifest.firefox.json` limited to the CMS origin. Custom jobs still work from the extension popup and full-page extension screens; the content script is only needed for the in-page SKU panel.
 
@@ -210,6 +210,7 @@ Custom jobs support:
 - Recent custom job history and manual translation checks.
 
 The popup keeps manual custom jobs compact. The `Bulk Import` popup button opens a full extension page for XLSX uploads, larger table review, row edits, and bulk submission.
+Backend and panel preferences are available from the popup header gear icon.
 
 The popup submits custom jobs through:
 
@@ -221,6 +222,12 @@ Recent custom jobs are read through:
 
 ```text
 GET /api/custom-translation-requests
+```
+
+The Recent Jobs dashboard uses a paginated combined list endpoint:
+
+```text
+GET /api/jobs?type=custom&statuses=ready&limit=10&offset=0
 ```
 
 Bulk custom-job workbooks are parsed through:
@@ -238,6 +245,7 @@ POST /api/translation-requests/{requestId}/import-translations
 ## Test Without Smartling
 
 Create a request from the CMS page while the active localized source is `en-US` or `en-CA`.
+Product Name and Description (Short) default to selected when populated. Unit of Measure Title appears below Description (Short), but defaults to unselected so authors opt in when needed.
 
 The extension submits a request shaped like:
 
@@ -254,6 +262,11 @@ The extension submits a request shaped like:
       "fieldKey": "productName",
       "fieldLabel": "Product Name",
       "value": "Source product name"
+    },
+    {
+      "fieldKey": "unitOfMeasureTitle",
+      "fieldLabel": "Unit of Measure Title",
+      "value": "Source unit of measure title"
     }
   ]
 }
@@ -271,7 +284,8 @@ Optional JSON body:
 {
   "fields": {
     "productName": "Translated product name",
-    "descriptionShort": "Translated short description"
+    "descriptionShort": "Translated short description",
+    "unitOfMeasureTitle": "Translated unit of measure title"
   }
 }
 ```
@@ -288,7 +302,8 @@ POST /api/translations/stage
   "targetLocale": "es-US",
   "fields": {
     "productName": "Spanish product name",
-    "descriptionShort": "Spanish short description"
+    "descriptionShort": "Spanish short description",
+    "unitOfMeasureTitle": "Spanish unit of measure title"
   }
 }
 ```
