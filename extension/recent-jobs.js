@@ -22,6 +22,7 @@ let allJobs = [];
 let filteredJobs = [];
 let jobsTotal = 0;
 let jobsHasMore = false;
+let usingLegacyJobsEndpoint = false;
 let filterReloadTimer = null;
 
 const elements = {
@@ -98,12 +99,16 @@ async function loadJobs({ forceSync = false, append = false } = {}) {
     const response = await loadJobPage(offset);
     const pageJobs = (response.requests || []).map((request) => normalizeJob(request, request.requestType));
 
+    usingLegacyJobsEndpoint = response.legacy === true;
     allJobs = append ? [...allJobs, ...pageJobs] : pageJobs;
     jobsTotal = Number(response.total) || allJobs.length;
     jobsHasMore = response.hasMore === true;
 
     renderLoadedJobs();
-    setStatus(buildLoadStatusMessage(syncSummary, syncError), syncError ? "error" : "success");
+    setStatus(
+      buildLoadStatusMessage(syncSummary, syncError, usingLegacyJobsEndpoint),
+      syncError ? "error" : "success"
+    );
   } catch (error) {
     elements.jobsList.innerHTML = `<div class="empty-state">Could not load recent jobs: ${escapeHtml(error.message)}</div>`;
     elements.jobsPagination.hidden = true;
@@ -128,7 +133,15 @@ async function loadJobPage(offset) {
     };
   }
 
-  return await apiFetch(`/api/jobs?${params.toString()}`);
+  try {
+    return await apiFetch(`/api/jobs?${params.toString()}`);
+  } catch (error) {
+    if (!isRouteNotFoundError(error)) {
+      throw error;
+    }
+
+    return await loadLegacyJobPage(offset);
+  }
 }
 
 function buildJobsQueryParams(offset) {
@@ -254,31 +267,117 @@ function saveFilters() {
 }
 
 async function syncActiveJobs(force) {
-  const response = await apiFetch("/api/translation-requests/sync", {
-    method: "POST",
-    body: JSON.stringify({
-      force,
-      reason: force ? "manual" : "dashboard"
-    })
-  });
+  let response;
+  try {
+    response = await apiFetch("/api/translation-requests/sync", {
+      method: "POST",
+      body: JSON.stringify({
+        force,
+        reason: force ? "manual" : "dashboard"
+      })
+    });
+  } catch (error) {
+    if (isRouteNotFoundError(error)) {
+      return {
+        message: "Backend sync endpoint is not available yet. Cached jobs loaded."
+      };
+    }
+    throw error;
+  }
 
   return response.summary || null;
 }
 
-function buildLoadStatusMessage(syncSummary, syncError) {
+function buildLoadStatusMessage(syncSummary, syncError, legacyMode = false) {
   const shown = allJobs.length;
   const descriptor = getCurrentFilterDescription();
   const loaded = `Showing ${shown} of ${jobsTotal} ${descriptor}.`;
+  const legacyMessage = legacyMode
+    ? " Compatibility mode is using older backend routes; restart or update the backend for faster paging."
+    : "";
 
   if (syncError) {
-    return `${loaded} Sync failed: ${syncError.message}`;
+    return `${loaded} Sync failed: ${syncError.message}${legacyMessage}`;
   }
 
   if (!syncSummary) {
-    return `${loaded} Cached results loaded.`;
+    return `${loaded} Cached results loaded.${legacyMessage}`;
   }
 
-  return `${loaded} ${syncSummary.message || "Smartling sync checked active jobs."}`;
+  return `${loaded} ${syncSummary.message || "Smartling sync checked active jobs."}${legacyMessage}`;
+}
+
+async function loadLegacyJobPage(offset) {
+  const filters = getCurrentFilterState();
+  const responses = await Promise.all([
+    filters.type === "sku" ? Promise.resolve({ requests: [] }) : apiFetch("/api/custom-translation-requests"),
+    filters.type === "custom" ? Promise.resolve({ requests: [] }) : apiFetch("/api/translation-requests")
+  ]);
+  const normalizedJobs = [
+    ...(responses[0].requests || []).map((request) => normalizeJob(request, "custom")),
+    ...(responses[1].requests || []).map((request) => normalizeJob(request, "sku"))
+  ]
+    .filter((job) => jobMatchesLegacyFilters(job, filters))
+    .sort((jobA, jobB) => compareLegacyJobs(jobA, jobB, filters.sort));
+  const pageJobs = normalizedJobs.slice(offset, offset + DEFAULT_JOBS_LIMIT);
+
+  return {
+    legacy: true,
+    requests: pageJobs,
+    total: normalizedJobs.length,
+    limit: DEFAULT_JOBS_LIMIT,
+    offset,
+    hasMore: offset + DEFAULT_JOBS_LIMIT < normalizedJobs.length
+  };
+}
+
+function jobMatchesLegacyFilters(job, filters) {
+  if (filters.favoritesOnly && !favoriteIds.has(job.id)) {
+    return false;
+  }
+
+  if (filters.type === "custom" && job.displayType !== "custom") {
+    return false;
+  }
+
+  if (filters.type === "sku" && job.displayType !== "sku") {
+    return false;
+  }
+
+  if (filters.status === "ready" && !READY_STATUS_VALUES.has(job.status)) {
+    return false;
+  }
+
+  if (filters.status !== "all" && filters.status !== "ready" && job.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.locale !== "all" && job.targetLocale !== filters.locale) {
+    return false;
+  }
+
+  if (filters.query && !job.searchText.includes(filters.query.toLowerCase())) {
+    return false;
+  }
+
+  return true;
+}
+
+function compareLegacyJobs(jobA, jobB, sort) {
+  if (sort === "oldest") {
+    return String(jobA.createdAt || "").localeCompare(String(jobB.createdAt || ""));
+  }
+
+  if (sort === "name") {
+    return String(jobA.jobName || jobA.id || "").localeCompare(String(jobB.jobName || jobB.id || ""));
+  }
+
+  if (sort === "status") {
+    return String(getStatusLabel(jobA)).localeCompare(String(getStatusLabel(jobB))) ||
+      String(jobB.createdAt || "").localeCompare(String(jobA.createdAt || ""));
+  }
+
+  return String(jobB.createdAt || "").localeCompare(String(jobA.createdAt || ""));
 }
 
 function normalizeJob(request, fallbackType) {
@@ -567,10 +666,17 @@ async function apiFetch(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error?.message || `Backend request failed: ${response.status}`);
+    const error = new Error(data.error?.message || `Backend request failed: ${response.status}`);
+    error.status = response.status;
+    error.details = data.error?.details || null;
+    throw error;
   }
 
   return data;
+}
+
+function isRouteNotFoundError(error) {
+  return error?.status === 404 && /route not found/i.test(String(error.message || ""));
 }
 
 function getAuthHeaders() {
