@@ -637,12 +637,15 @@ function renderPanel(context, fields) {
           >
         </div>
       </div>
-      <label class="cms-smartling-checkrow" for="cms-smartling-authorize-job">
-        <input id="cms-smartling-authorize-job" type="checkbox" ${
-          panelState.authorizeJob ? "checked" : ""
-        }>
-        <span>Authorize job after submission</span>
-      </label>
+      <div class="cms-smartling-submit-options">
+        <label class="cms-smartling-checkrow" for="cms-smartling-authorize-job">
+          <input id="cms-smartling-authorize-job" type="checkbox" ${
+            panelState.authorizeJob ? "checked" : ""
+          }>
+          <span>Authorize job after submission</span>
+        </label>
+        ${renderNorthAmericaPairOption(context, panelState)}
+      </div>
       <div class="${getReviewGridClassName()}">
         <div class="cms-smartling-field-list">
           ${fields
@@ -826,18 +829,25 @@ function getMultiSubmitStatusMessage(requests) {
 }
 
 function getDuplicateSubmittedRoutes(context, selectedRoutes) {
-  const sourceLocale = context.route?.sourceLocale;
   const existingTargets = new Set(
-    getRelevantRecentRequests(context)
+    recentRequestsState.requests
       .filter((request) => request.status === "submitted_to_smartling")
-      .filter((request) => request.sourceLocale === sourceLocale)
-      .map((request) => request.targetLocale)
+      .map((request) => `${request.sourceLocale || ""}|${request.targetLocale || ""}`)
   );
 
-  return selectedRoutes.filter((route) => existingTargets.has(route.targetLocale));
+  return selectedRoutes.filter((route) =>
+    existingTargets.has(`${route.sourceLocale || ""}|${route.targetLocale || ""}`)
+  );
 }
 
 function getSelectedTargetRoutes(context) {
+  if (
+    document.getElementById("cms-smartling-na-pair")?.checked === true &&
+    isNorthAmericaPairSupported(context)
+  ) {
+    return getNorthAmericaSkuRoutes();
+  }
+
   const routes = context.sourceRoutes?.length ? context.sourceRoutes : [context.route];
   if (routes.length === 1) {
     return routes;
@@ -850,6 +860,16 @@ function getSelectedTargetRoutes(context) {
   );
 
   return routes.filter((route) => selectedTargetLocales.has(route.targetLocale));
+}
+
+function isNorthAmericaPairSupported(context) {
+  return ["en-US", "en-CA"].includes(context.route?.sourceLocale);
+}
+
+function getNorthAmericaSkuRoutes() {
+  return ROUTES.filter((route) =>
+    ["us-es", "ca-fr"].includes(route.id)
+  );
 }
 
 function getSourcePanelState(context, fields) {
@@ -890,6 +910,10 @@ function getSourcePanelState(context, fields) {
         : getDefaultDueDateLocalValue(context),
     authorizeJob:
       sameContext && document.getElementById("cms-smartling-authorize-job")?.checked === true,
+    northAmericaPair:
+      sameContext &&
+      isNorthAmericaPairSupported(context) &&
+      document.getElementById("cms-smartling-na-pair")?.checked === true,
     selectedFields,
     selectedTargetLocales
   };
@@ -922,6 +946,21 @@ function renderTargetLocaleOptions(context, panelState) {
           .join("")}
       </div>
     </div>
+  `;
+}
+
+function renderNorthAmericaPairOption(context, panelState) {
+  if (!isNorthAmericaPairSupported(context)) {
+    return "";
+  }
+
+  return `
+    <label class="cms-smartling-checkrow cms-smartling-na-pair" for="cms-smartling-na-pair">
+      <input id="cms-smartling-na-pair" type="checkbox" ${
+        panelState.northAmericaPair ? "checked" : ""
+      }>
+      <span>Create both US Spanish and CA French jobs from these source strings</span>
+    </label>
   `;
 }
 
@@ -1285,16 +1324,22 @@ function renderRecentRequestActions(request) {
 }
 
 function getRelevantRecentRequests(context) {
-  const routeTargets = new Set(
-    (context.sourceRoutes?.length ? context.sourceRoutes : [context.route])
-      .filter(Boolean)
-      .map((route) => route.targetLocale)
+  const routes = getRecentRequestRoutes(context);
+  const routeKeys = new Set(
+    routes.map((route) => `${route.sourceLocale || ""}|${route.targetLocale || ""}`)
   );
 
   return recentRequestsState.requests
-    .filter((request) => request.sourceLocale === context.route?.sourceLocale)
-    .filter((request) => routeTargets.has(request.targetLocale))
+    .filter((request) => routeKeys.has(`${request.sourceLocale || ""}|${request.targetLocale || ""}`))
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+function getRecentRequestRoutes(context) {
+  if (isNorthAmericaPairSupported(context)) {
+    return getNorthAmericaSkuRoutes();
+  }
+
+  return (context.sourceRoutes?.length ? context.sourceRoutes : [context.route]).filter(Boolean);
 }
 
 function getVisibleRecentRequests(context, requests = getRelevantRecentRequests(context)) {

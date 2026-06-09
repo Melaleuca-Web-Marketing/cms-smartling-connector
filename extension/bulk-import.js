@@ -4,19 +4,26 @@ const BULK_DRAFT_STORAGE_KEY = "smartlingBulkImportDraft";
 let rows = [];
 let draftSaveTimer = null;
 let restoringDraft = false;
+let isSubmittingBulkJob = false;
+let submittedPayloadSignature = null;
 
 const bulkJobName = document.getElementById("bulkJobName");
 const bulkProject = document.getElementById("bulkProject");
 const bulkDueDate = document.getElementById("bulkDueDate");
-const bulkReferenceNumber = document.getElementById("bulkReferenceNumber");
 const bulkJobDescription = document.getElementById("bulkJobDescription");
 const bulkAuthorize = document.getElementById("bulkAuthorize");
+const bulkNorthAmericaPair = document.getElementById("bulkNorthAmericaPair");
+const bulkNorthAmericaPairRow = document.getElementById("bulkNorthAmericaPairRow");
 const bulkEuTargets = document.getElementById("bulkEuTargets");
 const bulkFile = document.getElementById("bulkFile");
 const bulkRows = document.getElementById("bulkRows");
 const rowSummary = document.getElementById("rowSummary");
 const statusElement = document.getElementById("status");
+const submitBanner = document.getElementById("submitBanner");
+const submitBannerTitle = document.getElementById("submitBannerTitle");
+const submitBannerMessage = document.getElementById("submitBannerMessage");
 const submitBulkJob = document.getElementById("submitBulkJob");
+const startNewBulkJob = document.getElementById("startNewBulkJob");
 const updateBanner = document.getElementById("updateBanner");
 const downloadTemplate = document.getElementById("downloadTemplate");
 
@@ -48,9 +55,9 @@ bulkProject.addEventListener("change", () => {
 });
 bulkJobName.addEventListener("input", scheduleDraftSave);
 bulkDueDate.addEventListener("input", scheduleDraftSave);
-bulkReferenceNumber.addEventListener("input", scheduleDraftSave);
 bulkJobDescription.addEventListener("input", scheduleDraftSave);
 bulkAuthorize.addEventListener("change", scheduleDraftSave);
+bulkNorthAmericaPair.addEventListener("change", scheduleDraftSave);
 document.querySelectorAll(".bulk-target-check").forEach((input) => {
   input.addEventListener("change", scheduleDraftSave);
 });
@@ -73,6 +80,7 @@ document.getElementById("clearRows").addEventListener("click", () => {
   }
 });
 submitBulkJob.addEventListener("click", submitBulkImport);
+startNewBulkJob.addEventListener("click", startNewImport);
 bulkRows.addEventListener("input", (event) => {
   const rowIndex = Number.parseInt(event.target.closest("tr")?.dataset.index, 10);
   if (!Number.isFinite(rowIndex) || !rows[rowIndex]) {
@@ -111,9 +119,9 @@ function initBulkPage(draft) {
   bulkJobName.value = buildDefaultCustomJobName();
   bulkProject.value = "us";
   bulkDueDate.value = getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
-  bulkReferenceNumber.value = "";
   bulkJobDescription.value = "";
   bulkAuthorize.checked = true;
+  bulkNorthAmericaPair.checked = false;
 
   if (draft) {
     restoreDraft(draft);
@@ -129,9 +137,9 @@ function restoreDraft(draft) {
   bulkProject.value = draft.project || "us";
   bulkDueDate.value =
     draft.jobDueDateLocal || getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
-  bulkReferenceNumber.value = draft.referenceNumber || "";
   bulkJobDescription.value = draft.jobDescription || "";
   bulkAuthorize.checked = draft.authorizeJob !== false;
+  bulkNorthAmericaPair.checked = draft.northAmericaPair === true;
   rows = Array.isArray(draft.rows) ? draft.rows : [];
 
   const selectedTargets = new Set(Array.isArray(draft.euTargets) ? draft.euTargets : []);
@@ -226,6 +234,16 @@ function renderRows() {
 }
 
 async function submitBulkImport() {
+  if (isSubmittingBulkJob || submittedPayloadSignature) {
+    setStatus("This bulk job has already been submitted. Change the data or start a new import to submit again.", "error");
+    showSubmitBanner(
+      "Submission already sent",
+      "The current rows are locked to prevent an accidental duplicate job.",
+      "error"
+    );
+    return;
+  }
+
   const project = getSelectedProject();
   const routes = getSelectedRoutes(project);
   const jobName = bulkJobName.value.trim() || buildDefaultCustomJobName();
@@ -247,8 +265,14 @@ async function submitBulkImport() {
     return;
   }
 
-  submitBulkJob.disabled = true;
+  const payloadSignature = getBulkSubmissionSignature({ fields, jobDueDate, jobName, routes });
+  setSubmitButtonState("submitting");
   setStatus(routes.length === 1 ? "Submitting bulk job..." : `Submitting ${routes.length} bulk jobs...`);
+  showSubmitBanner(
+    "Submitting bulk job",
+    routes.length === 1 ? "Sending one Smartling request..." : `Sending ${routes.length} Smartling requests...`,
+    "muted"
+  );
 
   try {
     const responses = [];
@@ -261,7 +285,6 @@ async function submitBulkImport() {
             targetLocale: route.targetLocale,
             jobName,
             jobDueDate,
-            referenceNumber: bulkReferenceNumber.value.trim(),
             jobDescription: bulkJobDescription.value.trim(),
             authorizeJob: bulkAuthorize.checked,
             fields
@@ -270,12 +293,21 @@ async function submitBulkImport() {
       );
     }
 
-    setStatus(getMultiSubmitStatusMessage(responses.map((response) => response.request)), "success");
+    const message = getMultiSubmitStatusMessage(responses.map((response) => response.request));
+    submittedPayloadSignature = payloadSignature;
+    setSubmitButtonState("submitted");
+    setStatus(message, "success");
+    showSubmitBanner(
+      "Bulk job submitted",
+      `${message} The submit button is locked until you change the data or start a new import.`,
+      "success"
+    );
+    submitBanner.scrollIntoView({ block: "nearest", behavior: "smooth" });
     globalThis.chrome?.storage?.local?.remove?.(BULK_DRAFT_STORAGE_KEY);
   } catch (error) {
+    setSubmitButtonState("idle");
     setStatus(error.message, "error");
-  } finally {
-    submitBulkJob.disabled = false;
+    showSubmitBanner("Bulk job was not submitted", error.message, "error");
   }
 }
 
@@ -296,7 +328,12 @@ function updateRowSummary() {
 }
 
 function renderProjectTargetControls() {
-  bulkEuTargets.hidden = getSelectedProject().id !== "eu";
+  const isEu = getSelectedProject().id === "eu";
+  bulkEuTargets.hidden = !isEu;
+  bulkNorthAmericaPairRow.hidden = isEu;
+  if (isEu) {
+    bulkNorthAmericaPair.checked = false;
+  }
 }
 
 function getSelectedProject() {
@@ -324,10 +361,27 @@ function getSelectedProject() {
 }
 
 function getSelectedRoutes(project) {
+  if (bulkNorthAmericaPair.checked && (project.id === "us" || project.id === "ca")) {
+    return getNorthAmericaRoutes();
+  }
+
   return project.targetLocales.map((targetLocale) => ({
     sourceLocale: project.sourceLocale,
     targetLocale
   }));
+}
+
+function getNorthAmericaRoutes() {
+  return [
+    {
+      sourceLocale: "en-US",
+      targetLocale: "es-US"
+    },
+    {
+      sourceLocale: "en-CA",
+      targetLocale: "fr-CA"
+    }
+  ];
 }
 
 function getSelectedEuTargetLocales() {
@@ -425,6 +479,7 @@ function scheduleDraftSave() {
     return;
   }
 
+  markBulkDataChanged();
   clearTimeout(draftSaveTimer);
   draftSaveTimer = setTimeout(saveDraft, 150);
 }
@@ -440,12 +495,95 @@ function saveDraft() {
       euTargets: getSelectedEuTargetLocales(),
       jobDueDateLocal: bulkDueDate.value,
       jobName: bulkJobName.value,
-      referenceNumber: bulkReferenceNumber.value,
+      northAmericaPair: bulkNorthAmericaPair.checked,
       jobDescription: bulkJobDescription.value,
       project: bulkProject.value,
       rows,
       savedAt: new Date().toISOString()
     }
+  });
+}
+
+function startNewImport() {
+  if (
+    rows.length &&
+    !confirm("Clear the current bulk import and start a new one?")
+  ) {
+    return;
+  }
+
+  restoringDraft = true;
+  rows = [];
+  bulkJobName.value = buildDefaultCustomJobName();
+  bulkProject.value = "us";
+  bulkDueDate.value = getDefaultDueDateLocalValue(getSelectedProject().sourceLocale);
+  bulkJobDescription.value = "";
+  bulkAuthorize.checked = true;
+  bulkNorthAmericaPair.checked = false;
+  document.querySelectorAll(".bulk-target-check").forEach((input) => {
+    input.checked = true;
+  });
+  restoringDraft = false;
+
+  submittedPayloadSignature = null;
+  renderProjectTargetControls();
+  renderRows();
+  setSubmitButtonState("idle");
+  hideSubmitBanner();
+  setStatus("Ready for a new bulk import.");
+  globalThis.chrome?.storage?.local?.remove?.(BULK_DRAFT_STORAGE_KEY);
+}
+
+function markBulkDataChanged() {
+  if (restoringDraft || isSubmittingBulkJob) {
+    return;
+  }
+
+  if (submittedPayloadSignature) {
+    submittedPayloadSignature = null;
+    setSubmitButtonState("idle");
+    showSubmitBanner(
+      "Bulk job data changed",
+      "Submission is available again because the rows or job settings changed.",
+      "muted"
+    );
+    setStatus("Data changed. Review before submitting again.");
+  }
+}
+
+function setSubmitButtonState(state) {
+  isSubmittingBulkJob = state === "submitting";
+  submitBulkJob.disabled = state === "submitting" || state === "submitted";
+  submitBulkJob.textContent =
+    state === "submitting"
+      ? "Sending..."
+      : state === "submitted"
+        ? "Submitted"
+        : "Send Bulk Job";
+}
+
+function showSubmitBanner(title, message, state = "muted") {
+  submitBanner.hidden = false;
+  submitBanner.className = `submit-banner is-${state}`;
+  submitBannerTitle.textContent = title;
+  submitBannerMessage.textContent = message;
+}
+
+function hideSubmitBanner() {
+  submitBanner.hidden = true;
+  submitBanner.className = "submit-banner";
+  submitBannerTitle.textContent = "";
+  submitBannerMessage.textContent = "";
+}
+
+function getBulkSubmissionSignature({ fields, jobDueDate, jobName, routes }) {
+  return JSON.stringify({
+    authorizeJob: bulkAuthorize.checked,
+    fields,
+    jobDescription: bulkJobDescription.value.trim(),
+    jobDueDate,
+    jobName,
+    routes
   });
 }
 

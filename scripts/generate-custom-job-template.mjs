@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
-const outputPath = join(rootDir, "extension", "templates", "custom-job-template.xlsx");
+const outputPaths = [
+  join(rootDir, "extension", "templates", "custom-job-template.xlsx"),
+  join(rootDir, "docs", "templates", "custom-job-template.xlsx")
+];
 const crcTable = createCrcTable();
 
 const files = [
@@ -19,12 +22,15 @@ const files = [
   ["xl/worksheets/sheet2.xml", stringsSheetXml()]
 ];
 
-await mkdir(dirname(outputPath), {
-  recursive: true
-});
-await writeFile(outputPath, createZip(files));
+const template = createZip(files);
 
-console.log(`Generated custom job template at ${relative(rootDir, outputPath)}`);
+for (const outputPath of outputPaths) {
+  await mkdir(dirname(outputPath), {
+    recursive: true
+  });
+  await writeFile(outputPath, template);
+  console.log(`Generated custom job template at ${relative(rootDir, outputPath)}`);
+}
 
 function contentTypesXml() {
   return xml(
@@ -136,7 +142,7 @@ function instructionsSheetXml() {
     [cell("A7", "4.", 3), cell("B7", "Leave rows blank if they should not be submitted.", 3)],
     [
       cell("A8", "5.", 3),
-      cell("B8", "Upload this workbook from the extension popup bulk import area.", 3)
+      cell("B8", "Upload this workbook from the Custom Jobs bulk import area.", 3)
     ],
     [cell("A10", "Required columns", 2)],
     [

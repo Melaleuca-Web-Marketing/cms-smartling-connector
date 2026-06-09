@@ -1,9 +1,12 @@
 {
   "name": "cms-smartling-connector",
-  "version": "0.6.6",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "web:dev": "next dev -H 127.0.0.1 -p 17819",
+    "web:build": "next build",
+    "web:start": "next start -H 127.0.0.1 -p 17819",
     "build:extension": "node scripts/generate-custom-job-template.mjs && node scripts/build-extension.mjs all && node scripts/package-extension.mjs all && node scripts/generate-release-info.mjs",
     "build:chromium": "node scripts/generate-custom-job-template.mjs && node scripts/build-extension.mjs chromium && node scripts/package-extension.mjs chromium && node scripts/generate-release-info.mjs",
     "build:firefox": "node scripts/generate-custom-job-template.mjs && node scripts/build-extension.mjs firefox && node scripts/package-extension.mjs firefox && node scripts/generate-release-info.mjs",
@@ -13,6 +16,17 @@
     "pm2:restart": "pm2 restart ecosystem.config.cjs --update-env",
     "pm2:stop": "pm2 delete cms-smartling-connector",
     "pm2:logs": "pm2 logs cms-smartling-connector",
-    "check": "node --check backend/server.mjs && node --check backend/store.mjs && node --check backend/smartlingAdapter.mjs && node --check backend/xlsxImport.mjs && node --check extension/versionCheck.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/bulk-import.js && node --check extension/recent-jobs.js && node --check scripts/build-extension.mjs && node --check scripts/package-extension.mjs && node --check scripts/generate-custom-job-template.mjs && node --check scripts/generate-release-info.mjs"
+    "check": "node --check backend/server.mjs && node --check backend/store.mjs && node --check backend/smartlingAdapter.mjs && node --check backend/xlsxImport.mjs && node --check extension/versionCheck.js && node --check extension/content.js && node --check extension/popup.js && node --check extension/bulk-import.js && node --check extension/recent-jobs.js && node --check next.config.mjs && node --check postcss.config.mjs && node --check scripts/build-extension.mjs && node --check scripts/package-extension.mjs && node --check scripts/generate-custom-job-template.mjs && node --check scripts/generate-release-info.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "@tailwindcss/postcss": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  },
+  "dependencies": {
+    "lucide-react": "^1.17.0",
+    "next": "^15.5.19",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }

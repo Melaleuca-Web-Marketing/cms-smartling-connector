@@ -17,12 +17,13 @@ const panelLayout = document.getElementById("panelLayout");
 const customJobPrefix = document.getElementById("customJobPrefix");
 const customJobName = document.getElementById("customJobName");
 const customJobSuffix = document.getElementById("customJobSuffix");
-const customReferenceNumber = document.getElementById("customReferenceNumber");
 const customJobDescription = document.getElementById("customJobDescription");
 const customProject = document.getElementById("customProject");
 const customEuTargets = document.getElementById("customEuTargets");
 const customDueDate = document.getElementById("customDueDate");
 const customAuthorize = document.getElementById("customAuthorize");
+const customNorthAmericaPair = document.getElementById("customNorthAmericaPair");
+const customNorthAmericaPairRow = document.getElementById("customNorthAmericaPairRow");
 const customStringList = document.getElementById("customStringList");
 
 chrome.storage.local.get(
@@ -89,10 +90,10 @@ customProject.addEventListener("change", () => {
 });
 customJobName.addEventListener("input", scheduleCustomDraftSave);
 customJobSuffix.addEventListener("input", scheduleCustomDraftSave);
-customReferenceNumber.addEventListener("input", scheduleCustomDraftSave);
 customJobDescription.addEventListener("input", scheduleCustomDraftSave);
 customDueDate.addEventListener("input", scheduleCustomDraftSave);
 customAuthorize.addEventListener("change", scheduleCustomDraftSave);
+customNorthAmericaPair.addEventListener("change", scheduleCustomDraftSave);
 document.querySelectorAll(".custom-target-check").forEach((inputElement) => {
   inputElement.addEventListener("change", scheduleCustomDraftSave);
 });
@@ -269,6 +270,7 @@ function initCustomJobForm(draft = null) {
     getSelectedProject().sourceLocale,
   );
   customAuthorize.checked = true;
+  customNorthAmericaPair.checked = false;
   customStringList.innerHTML = "";
 
   if (draft) {
@@ -314,9 +316,9 @@ function restoreCustomDraft(draft) {
   customJobPrefix.value = formatCompactDate(new Date());
   customJobName.value = getDraftJobName(draft);
   customJobSuffix.value = draft.jobSuffix || "";
-  customReferenceNumber.value = draft.referenceNumber || "";
   customJobDescription.value = draft.jobDescription || "";
   customAuthorize.checked = draft.authorizeJob !== false;
+  customNorthAmericaPair.checked = draft.northAmericaPair === true;
   restoreEuTargets(draft.euTargets);
   renderProjectTargetControls(getSelectedProject());
   customDueDate.value =
@@ -369,10 +371,10 @@ function getCustomDraft() {
     project: customProject.value,
     jobName: customJobName.value,
     jobSuffix: customJobSuffix.value,
-    referenceNumber: customReferenceNumber.value,
     jobDescription: customJobDescription.value,
     jobDueDateLocal: customDueDate.value,
     authorizeJob: customAuthorize.checked,
+    northAmericaPair: customNorthAmericaPair.checked,
     euTargets: getSelectedEuTargetLocales(),
     strings: [...customStringList.querySelectorAll(".custom-string-row")].map(
       (row) => ({
@@ -425,7 +427,6 @@ async function submitCustomJob() {
             targetLocale: route.targetLocale,
             jobName,
             jobDueDate,
-            referenceNumber: customReferenceNumber.value.trim(),
             jobDescription: customJobDescription.value.trim(),
             authorizeJob: customAuthorize.checked,
             fields,
@@ -441,9 +442,9 @@ async function submitCustomJob() {
       "success",
     );
     setDefaultCustomJobNameParts();
-    customReferenceNumber.value = "";
     customJobDescription.value = "";
     customDueDate.value = getDefaultDueDateLocalValue(project.sourceLocale);
+    customNorthAmericaPair.checked = false;
     customStringList.innerHTML = "";
     addCustomStringRow("", "");
     clearCustomDraft();
@@ -575,10 +576,27 @@ function getSelectedProject() {
 }
 
 function getSelectedCustomRoutes(project = getSelectedProject()) {
+  if (customNorthAmericaPair.checked && (project.id === "us" || project.id === "ca")) {
+    return getNorthAmericaCustomRoutes();
+  }
+
   return project.targetLocales.map((targetLocale) => ({
     sourceLocale: project.sourceLocale,
     targetLocale,
   }));
+}
+
+function getNorthAmericaCustomRoutes() {
+  return [
+    {
+      sourceLocale: "en-US",
+      targetLocale: "es-US",
+    },
+    {
+      sourceLocale: "en-CA",
+      targetLocale: "fr-CA",
+    },
+  ];
 }
 
 function getSelectedEuTargetLocales() {
@@ -592,6 +610,14 @@ function renderProjectTargetControls(project = getSelectedProject()) {
   customEuTargets.hidden = !isEu;
   customEuTargets.classList.toggle("is-hidden", !isEu);
   customEuTargets.setAttribute("aria-hidden", String(!isEu));
+
+  customNorthAmericaPairRow.hidden = isEu;
+  customNorthAmericaPairRow.classList.toggle("is-hidden", isEu);
+  customNorthAmericaPairRow.setAttribute("aria-hidden", String(isEu));
+
+  if (isEu) {
+    customNorthAmericaPair.checked = false;
+  }
 }
 
 function getMultiSubmitStatusMessage(requests) {

@@ -168,6 +168,11 @@ textarea:focus {
   accent-color: var(--sl-brand);
 }
 
+.paired-submit-row[hidden],
+.paired-submit-row.is-hidden {
+  display: none !important;
+}
+
 .target-panel {
   display: grid;
   gap: 8px;
@@ -351,6 +356,10 @@ td {
   display: none !important;
 }
 
+.submit-banner[hidden] {
+  display: none !important;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -370,6 +379,60 @@ td {
   color: #713f12;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.submit-banner {
+  position: sticky;
+  top: 10px;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--sl-border);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: var(--sl-surface);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.14);
+}
+
+.submit-banner strong,
+.submit-banner span {
+  display: block;
+}
+
+.submit-banner strong {
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.submit-banner span {
+  color: var(--sl-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.submit-banner.is-muted {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.submit-banner.is-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.submit-banner.is-success strong {
+  color: var(--sl-success);
+}
+
+.submit-banner.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.submit-banner.is-error strong {
+  color: var(--sl-danger);
 }
 
 .update-banner strong {
@@ -416,5 +479,9 @@ td {
 
   .import-actions {
     justify-content: stretch;
+  }
+
+  .submit-banner {
+    grid-template-columns: 1fr;
   }
 }

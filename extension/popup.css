@@ -313,6 +313,11 @@ select {
   accent-color: var(--sl-brand);
 }
 
+.paired-submit-row[hidden],
+.paired-submit-row.is-hidden {
+  display: none !important;
+}
+
 .custom-targets {
   display: grid;
   gap: 7px;

@@ -1,4 +1,6 @@
 /.env
+/node_modules/
+/.next/
 /dist/
 /docs/downloads/*.zip
 /docs/release-info.json

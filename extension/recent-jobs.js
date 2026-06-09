@@ -405,7 +405,6 @@ function normalizeJob(request, fallbackType) {
       request.id,
       request.jobName,
       request.jobDescription,
-      request.referenceNumber,
       request.sku,
       sourceLocale,
       targetLocale,
@@ -533,7 +532,6 @@ function renderJobCard(job) {
       <div class="job-meta-grid">
         ${sourceTarget ? `<span class="job-meta">${escapeHtml(sourceTarget)}</span>` : ""}
         ${job.sku ? `<span class="job-meta">SKU ${escapeHtml(job.sku)}</span>` : ""}
-        ${job.referenceNumber ? `<span class="job-meta">Ref ${escapeHtml(job.referenceNumber)}</span>` : ""}
         ${job.smartlingJobUid ? `<span class="job-meta">Smartling ${escapeHtml(job.smartlingJobUid)}</span>` : ""}
         <span class="job-meta">${escapeHtml(formatDate(job.createdAt))}</span>
       </div>

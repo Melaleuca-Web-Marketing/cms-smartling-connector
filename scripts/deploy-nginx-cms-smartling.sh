@@ -37,17 +37,24 @@ build_extensions() {
   su - brand -c "cd '${REPO_DIR}' && npm run build:extension"
 }
 
+build_web() {
+  printf 'Building Next standalone app...\n'
+  su - brand -c "cd '${REPO_DIR}' && npm run web:build"
+}
+
 deploy_docs() {
   printf 'Deploying docs to %s...\n' "${DOCS_DST_DIR}"
   install -d -m 0755 \
     "${DOCS_DST_DIR}" \
     "${DOCS_DST_DIR}/assets" \
-    "${DOCS_DST_DIR}/downloads"
+    "${DOCS_DST_DIR}/downloads" \
+    "${DOCS_DST_DIR}/templates"
 
   install -m 0644 "${DOCS_SRC_DIR}/index.html" "${DOCS_DST_DIR}/index.html"
   install -m 0644 "${DOCS_SRC_DIR}/styles.css" "${DOCS_DST_DIR}/styles.css"
   install -m 0644 "${RELEASE_INFO_SRC}" "${DOCS_DST_DIR}/release-info.json"
   install -m 0644 "${DOCS_SRC_DIR}/assets/smartling_logo.png" "${DOCS_DST_DIR}/assets/smartling_logo.png"
+  install -m 0644 "${DOCS_SRC_DIR}/templates/custom-job-template.xlsx" "${DOCS_DST_DIR}/templates/custom-job-template.xlsx"
   find "${DOCS_DST_DIR}/downloads" -maxdepth 1 -type f -name 'cms-smartling-connector-*.zip' -delete
   find "${DOWNLOADS_SRC_DIR}" -maxdepth 1 -type f -name 'cms-smartling-connector-*.zip' -exec install -m 0644 {} "${DOCS_DST_DIR}/downloads/" \;
 }
@@ -59,15 +66,23 @@ deploy_nginx_config() {
   systemctl reload nginx
 }
 
+restart_services() {
+  printf 'Restarting PM2 services...\n'
+  su - brand -c "cd '${REPO_DIR}' && pm2 startOrReload ecosystem.config.cjs --update-env"
+}
+
 require_file "${DOCS_SRC_DIR}/index.html"
 require_file "${DOCS_SRC_DIR}/styles.css"
 require_file "${DOCS_SRC_DIR}/assets/smartling_logo.png"
 require_file "${NGINX_CONF_SRC}"
 require_command zip
 require_command npm
+require_command pm2
 
 build_extensions
+build_web
 deploy_docs
 deploy_nginx_config
+restart_services
 
 printf 'CMS Smartling docs and Nginx config deployed successfully.\n'

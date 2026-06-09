@@ -98,6 +98,24 @@ Or build both:
 npm run build:extension
 ```
 
+Build the Next.js standalone app:
+
+```powershell
+npm run web:build
+```
+
+Run it locally on port `17819`:
+
+```powershell
+npm run web:dev
+```
+
+For a single local preview origin, run the backend, run `npm run web:dev`, then start:
+
+```powershell
+node scripts/local-preview.mjs
+```
+
 Build ZIP packages for distribution:
 
 ```powershell
@@ -134,13 +152,13 @@ The extension checks `{Backend URL}/release-info.json` and shows an update banne
 
 ## Download Landing Page
 
-A static download page lives in:
+The extension download landing page remains static:
 
 ```text
 docs/index.html
 ```
 
-It links to expected ZIP files on the same internal web server:
+The download page links to expected ZIP files on the same internal web server:
 
 ```text
 downloads/cms-smartling-connector-chromium.zip
@@ -149,14 +167,15 @@ downloads/cms-smartling-connector-firefox.zip
 
 After `release-info.json` loads, the page updates those links to the versioned ZIP filenames for the current release.
 
-This should be copied to an internal static site or web server.
+The standalone Custom Jobs and Recent Jobs tools are served by the Next.js app under `/cms-smartling`.
 
 Internal server release flow:
 
 1. Run `npm run build:extension`.
-2. Copy `docs/index.html`, `docs/styles.css`, and `docs/assets/smartling_logo.png` to the internal web server.
-3. Copy the generated `docs/downloads` folder next to `index.html` on that server.
-4. Keep the ZIP asset names unchanged so the download page always points at the latest available builds.
+2. Run `npm run web:build`.
+3. Copy `docs/index.html`, `docs/styles.css`, and `docs/assets/smartling_logo.png` to the internal web server.
+4. Copy the generated `docs/downloads` and `docs/templates` folders next to `index.html` on that server.
+5. Restart the PM2 backend and web apps with `pm2 startOrReload ecosystem.config.cjs --update-env`.
 
 ## Load Chrome or Edge Extension
 
@@ -196,17 +215,27 @@ For an additional backend guard, set `BACKEND_API_TOKEN` in `.env`. When present
 
 ## Custom Translation Jobs
 
-The extension popup includes a `Custom Job` tab for strings that are not tied to a SKU, such as facet/refiner labels, category headings, or custom page copy.
+Standalone custom job pages are available from the internal web landing page:
+
+```text
+https://usifhqtsagrqt01.melaleuca.net/cms-smartling/custom-jobs
+https://usifhqtsagrqt01.melaleuca.net/cms-smartling/recent-jobs
+```
+
+The Next.js custom job page supports both manually entered strings and Excel bulk imports in a single workflow. The Recent Jobs page shows a standalone operations dashboard for custom/SKU jobs, but stores backend URL, API token, filters, and favorites in browser `localStorage`. Legacy `.html` URLs redirect to these clean routes.
+
+The extension popup also includes a compact `Custom Job` tab for strings that are not tied to a SKU, such as facet/refiner labels, category headings, or custom page copy.
 
 Custom jobs support:
 
 - Editable job name, defaulting to `yyyymmdd-Custom`.
 - Project selection for US, CA, or EU.
 - Fixed US target of Spanish and fixed CA target of French.
+- Optional US + CA paired submission creates separate US Spanish and CA French jobs from the same custom-job details.
 - EU target language checkboxes for `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
 - Job due date and authorize-job controls.
 - One or more labeled source strings.
-- Bulk import from the bundled Excel template at `extension/templates/custom-job-template.xlsx`.
+- Bulk import from the bundled Excel template at `extension/templates/custom-job-template.xlsx` or `docs/templates/custom-job-template.xlsx`.
 - Recent custom job history and manual translation checks.
 
 The popup keeps manual custom jobs compact. The `Bulk Import` popup button opens a full extension page for XLSX uploads, larger table review, row edits, and bulk submission.

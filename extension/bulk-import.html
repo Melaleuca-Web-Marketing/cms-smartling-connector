@@ -21,6 +21,21 @@
       </header>
 
       <div class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden></div>
+      <div
+        class="submit-banner"
+        id="submitBanner"
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+        <div>
+          <strong id="submitBannerTitle"></strong>
+          <span id="submitBannerMessage"></span>
+        </div>
+        <button id="startNewBulkJob" type="button" class="secondary-button">
+          Start new import
+        </button>
+      </div>
 
       <section class="toolbar-card">
         <div class="form-grid">
@@ -46,11 +61,16 @@
           </label>
         </div>
 
+        <label
+          class="check-row paired-submit-row"
+          id="bulkNorthAmericaPairRow"
+          for="bulkNorthAmericaPair"
+        >
+          <input id="bulkNorthAmericaPair" type="checkbox">
+          <span>Also submit US Spanish and CA French as separate jobs</span>
+        </label>
+
         <div class="job-details-grid">
-          <label>
-            <span>Reference number</span>
-            <input id="bulkReferenceNumber" type="text" spellcheck="false">
-          </label>
           <label>
             <span>Additional details</span>
             <textarea

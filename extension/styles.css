@@ -305,6 +305,7 @@ html.cms-smartling-split-view-active body {
 
 #cms-smartling-panel .cms-smartling-source-overview,
 #cms-smartling-panel .cms-smartling-form-grid,
+#cms-smartling-panel .cms-smartling-submit-options,
 #cms-smartling-panel .cms-smartling-review-grid,
 #cms-smartling-panel .cms-smartling-action-row {
   display: grid;
