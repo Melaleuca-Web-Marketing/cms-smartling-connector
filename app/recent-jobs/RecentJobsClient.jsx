@@ -9,7 +9,7 @@ const FAVORITES_STORAGE_KEY = "smartlingRecentJobFavorites";
 const FILTERS_STORAGE_KEY = "smartlingRecentJobFilters";
 const DEFAULT_LIMIT = 10;
 const READY_STATUS_VALUES = new Set(["translations_available", "published"]);
-const TARGET_LOCALE_OPTIONS = ["es-US", "fr-CA", "nl-NL", "de-DE", "de-AT", "pl-PL", "lt-LT", "it-IT"];
+const TARGET_LOCALE_OPTIONS = ["es-US", "fr-CA", "nl-NL", "de-DE", "pl-PL", "lt-LT"];
 const STATUS_OPTIONS = [
   { value: "ready", label: "Ready" },
   { value: "submitted_to_smartling", label: "Submitted" },

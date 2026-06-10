@@ -13,7 +13,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
   { value: "published", label: "Published" }
 ];
-const TARGET_LOCALE_OPTIONS = ["es-US", "fr-CA", "nl-NL", "de-DE", "de-AT", "pl-PL", "lt-LT", "it-IT"];
+const TARGET_LOCALE_OPTIONS = ["es-US", "fr-CA", "nl-NL", "de-DE", "pl-PL", "lt-LT"];
 
 let apiBaseUrl = DEFAULT_API_BASE_URL;
 let apiToken = "";

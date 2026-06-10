@@ -45,13 +45,6 @@ const ROUTES = [
     targetLocale: "de-DE"
   },
   {
-    id: "eu-at",
-    sourceCountry: "Ireland",
-    sourceLocale: "en-IE",
-    targetCountry: "Austria",
-    targetLocale: "de-AT"
-  },
-  {
     id: "eu-pl",
     sourceCountry: "Ireland",
     sourceLocale: "en-IE",
@@ -64,13 +57,6 @@ const ROUTES = [
     sourceLocale: "en-IE",
     targetCountry: "Lithuania",
     targetLocale: "lt-LT"
-  },
-  {
-    id: "eu-it",
-    sourceCountry: "Ireland",
-    sourceLocale: "en-IE",
-    targetCountry: "Italy",
-    targetLocale: "it-IT"
   }
 ];
 

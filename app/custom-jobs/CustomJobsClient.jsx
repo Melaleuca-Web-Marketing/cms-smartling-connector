@@ -53,7 +53,10 @@ export function CustomJobsClient() {
     setJobDescription(draft.jobDescription || "");
     setAuthorizeJob(typeof draft.authorizeJob === "boolean" ? draft.authorizeJob : getDefaultAuthorizeJob(nextProject.id));
     setNorthAmericaPair(draft.northAmericaPair === true);
-    setSelectedEuTargets(Array.isArray(draft.euTargets) && draft.euTargets.length ? draft.euTargets : PROJECTS.eu.targetLocales);
+    const savedEuTargets = Array.isArray(draft.euTargets)
+      ? draft.euTargets.filter((locale) => PROJECTS.eu.targetLocales.includes(locale))
+      : [];
+    setSelectedEuTargets(savedEuTargets.length ? savedEuTargets : PROJECTS.eu.targetLocales);
     setRows(Array.isArray(draft.rows) && draft.rows.length ? draft.rows : [INITIAL_ROW]);
   }, []);
 
@@ -302,7 +305,7 @@ export function CustomJobsClient() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(280px,1.2fr)_minmax(320px,1fr)_220px]">
-              <label className="field-label">
+              <label className="field-label self-start">
                 <span className="inline-flex items-center gap-2">
                   Job name
                   <HelpTip text="Use a searchable name for the overall request, such as the campaign, page, component, or content type." />

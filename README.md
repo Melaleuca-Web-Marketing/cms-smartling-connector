@@ -8,7 +8,7 @@ The extension detects the CMS product page, submits only `Product Name` and `Des
 
 - `United States | en-US` submits to the US project for CMS target `es-US`, using Smartling locale `es-LA`.
 - `Canada | en-CA` submits to the CA project for `fr-CA`.
-- `Ireland | en-IE` submits to the EU project for selected target locales: `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
+- `Ireland | en-IE` submits to the EU project for selected target locales: `nl-NL`, `de-DE`, `pl-PL`, and `lt-LT`.
 - `United States | es-US` and `Canada | fr-CA` show staged translation inserts.
 - EU target cultures show staged translation inserts when matching translations are available.
 - `Mexico | es-MX` is ignored.
@@ -232,7 +232,7 @@ Custom jobs support:
 - Project selection for US, CA, or EU.
 - Fixed US target of Spanish and fixed CA target of French.
 - Optional US + CA paired submission creates separate US Spanish and CA French jobs from the same custom-job details.
-- EU target language checkboxes for `nl-NL`, `de-DE`, `de-AT`, `pl-PL`, `lt-LT`, and `it-IT`.
+- EU target language checkboxes for `nl-NL`, `de-DE`, `pl-PL`, and `lt-LT`.
 - Job due date and authorize-job controls.
 - One or more labeled source strings.
 - Bulk import from the bundled Excel template at `extension/templates/custom-job-template.xlsx` or `docs/templates/custom-job-template.xlsx`.

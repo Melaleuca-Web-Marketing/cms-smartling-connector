@@ -21,17 +21,15 @@ export const PROJECTS = {
     detail: "en-IE to selected languages",
     dueBusinessDays: 5,
     sourceLocale: "en-IE",
-    targetLocales: ["nl-NL", "de-DE", "de-AT", "pl-PL", "lt-LT", "it-IT"]
+    targetLocales: ["nl-NL", "de-DE", "pl-PL", "lt-LT"]
   }
 };
 
 export const EU_TARGET_LABELS = {
   "nl-NL": "Netherlands",
   "de-DE": "Germany",
-  "de-AT": "Austria",
   "pl-PL": "Poland",
-  "lt-LT": "Lithuania",
-  "it-IT": "Italy"
+  "lt-LT": "Lithuania"
 };
 
 export function formatCompactDate(date = new Date()) {
@@ -97,7 +95,9 @@ export function getRoutesForProject({ project, northAmericaPair, selectedEuTarge
     ];
   }
 
-  const targetLocales = project.id === "eu" ? selectedEuTargets : project.targetLocales;
+  const targetLocales = project.id === "eu"
+    ? selectedEuTargets.filter((targetLocale) => project.targetLocales.includes(targetLocale))
+    : project.targetLocales;
   return targetLocales.map((targetLocale) => ({
     sourceLocale: project.sourceLocale,
     targetLocale
