@@ -232,6 +232,33 @@ label {
   font-weight: 750;
 }
 
+.label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.help-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 50%;
+  background: var(--sl-brand-soft);
+  color: var(--sl-brand);
+  cursor: help;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.help-tip:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--sl-ring);
+}
+
 input,
 select,
 textarea {

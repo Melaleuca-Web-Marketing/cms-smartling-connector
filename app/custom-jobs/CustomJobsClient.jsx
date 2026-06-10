@@ -22,6 +22,11 @@ import {
 
 const CUSTOM_DRAFT_STORAGE_KEY = "smartlingStandaloneCustomJobDraft";
 const INITIAL_ROW = { label: "", value: "" };
+const PROJECT_NAV_LABELS = {
+  ca: "Canada",
+  eu: "EU",
+  us: "US"
+};
 
 export function CustomJobsClient() {
   const { apiFetch, getAuthHeaders, settings } = useSmartlingSettings();
@@ -46,7 +51,7 @@ export function CustomJobsClient() {
     setJobName(draft.jobName || buildDefaultCustomJobName());
     setJobDueDate(draft.jobDueDateLocal || getDefaultDueDateLocalValue(nextProject.sourceLocale));
     setJobDescription(draft.jobDescription || "");
-    setAuthorizeJob(draft.authorizeJob !== false);
+    setAuthorizeJob(typeof draft.authorizeJob === "boolean" ? draft.authorizeJob : getDefaultAuthorizeJob(nextProject.id));
     setNorthAmericaPair(draft.northAmericaPair === true);
     setSelectedEuTargets(Array.isArray(draft.euTargets) && draft.euTargets.length ? draft.euTargets : PROJECTS.eu.targetLocales);
     setRows(Array.isArray(draft.rows) && draft.rows.length ? draft.rows : [INITIAL_ROW]);
@@ -95,6 +100,7 @@ export function CustomJobsClient() {
     const nextProject = PROJECTS[nextProjectId] || PROJECTS.us;
     setProjectId(nextProject.id);
     setJobDueDate(getDefaultDueDateLocalValue(nextProject.sourceLocale));
+    setAuthorizeJob(getDefaultAuthorizeJob(nextProject.id));
     if (nextProject.id === "eu") {
       setNorthAmericaPair(false);
     }
@@ -139,7 +145,7 @@ export function CustomJobsClient() {
     setJobName(buildDefaultCustomJobName());
     setJobDueDate(getDefaultDueDateLocalValue(PROJECTS.us.sourceLocale));
     setJobDescription("");
-    setAuthorizeJob(true);
+    setAuthorizeJob(getDefaultAuthorizeJob("us"));
     setNorthAmericaPair(false);
     setSelectedEuTargets(PROJECTS.eu.targetLocales);
     setRows([INITIAL_ROW]);
@@ -267,12 +273,11 @@ export function CustomJobsClient() {
     <main className="grid">
       <section className="grid min-w-0 content-start gap-5 px-6 py-6 lg:pl-[344px]">
           <section className="grid gap-2">
-            <p className="text-sm font-bold uppercase tracking-wide text-sky-700">Standalone submission</p>
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <h1 className="font-display text-3xl font-bold text-slate-950">Custom Job Workspace</h1>
+                <h1 className="font-display text-3xl font-bold text-slate-950">Custom Jobs</h1>
                 <p className="mt-1 max-w-3xl text-sm font-medium text-slate-600">
-                  Build single or bulk Smartling jobs for labels, category copy, page text, and other non-SKU strings.
+                  Submit requests for Smartling Translations.
                 </p>
               </div>
               <a className="btn-secondary" href="/cms-smartling/templates/custom-job-template.xlsx" download>
@@ -298,11 +303,17 @@ export function CustomJobsClient() {
 
             <div className="grid gap-4 lg:grid-cols-[minmax(280px,1.2fr)_minmax(320px,1fr)_220px]">
               <label className="field-label">
-                Job name
+                <span className="inline-flex items-center gap-2">
+                  Job name
+                  <HelpTip text="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB." />
+                </span>
                 <input className="field-control" value={jobName} onChange={(event) => { setJobName(event.target.value); markChanged(); }} />
               </label>
               <div className="field-label">
-                Project
+                <span className="inline-flex items-center gap-2">
+                  Project
+                  <HelpTip text="Choose the market and source language for this request. US sends to Spanish, Canada sends to French, and EU sends from en-IE to selected languages." />
+                </span>
                 <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-100 p-1">
                   {Object.values(PROJECTS).map((item) => (
                     <button
@@ -313,16 +324,16 @@ export function CustomJobsClient() {
                       }`}
                       onClick={() => updateProject(item.id)}
                     >
-                      <span className="block">{item.label}</span>
-                      <span className={`block text-[11px] ${projectId === item.id ? "text-slate-300" : "text-slate-500"}`}>
-                        {item.detail}
-                      </span>
+                      <span className="block text-center">{PROJECT_NAV_LABELS[item.id] || item.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
               <label className="field-label">
-                Due date
+                <span className="inline-flex items-center gap-2">
+                  Due date
+                  <HelpTip text="Requested Smartling due date. The default is 3 business days for US/Canada and 5 business days for EU." />
+                </span>
                 <input
                   className="field-control"
                   type="datetime-local"
@@ -334,7 +345,10 @@ export function CustomJobsClient() {
 
             <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_300px]">
               <label className="field-label">
-                Additional details
+                <span className="inline-flex items-center gap-2">
+                  Additional details
+                  <HelpTip text="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful." />
+                </span>
                 <textarea
                   className="field-control min-h-28 py-3"
                   value={jobDescription}
@@ -351,7 +365,10 @@ export function CustomJobsClient() {
                     checked={authorizeJob}
                     onChange={(event) => { setAuthorizeJob(event.target.checked); markChanged(); }}
                   />
-                  Authorize job after submission
+                  <span className="inline-flex items-center gap-2">
+                    Authorize Job
+                    <HelpTip text="When checked, the job is submitted into the Smartling workflow immediately. Leave unchecked if the translation team should review the job setup first." />
+                  </span>
                 </label>
                 {project.id !== "eu" ? (
                   <label className="flex items-center gap-3 text-sm font-bold text-slate-700">
@@ -399,8 +416,18 @@ export function CustomJobsClient() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-extrabold uppercase text-slate-500">
                     <th className="w-16 px-4 py-3 text-right">#</th>
-                    <th className="w-[34%] px-4 py-3">Custom label</th>
-                    <th className="px-4 py-3">Source string</th>
+                    <th className="w-[34%] px-4 py-3">
+                      <span className="inline-flex items-center gap-2">
+                        Custom label
+                        <HelpTip text="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label." />
+                      </span>
+                    </th>
+                    <th className="px-4 py-3">
+                      <span className="inline-flex items-center gap-2">
+                        Source string
+                        <HelpTip text="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated." />
+                      </span>
+                    </th>
                     <th className="w-24 px-4 py-3">Action</th>
                   </tr>
                 </thead>
@@ -466,15 +493,6 @@ export function CustomJobsClient() {
               </button>
             </div>
               </section>
-
-              <section className="muted-panel p-5">
-            <h2 className="font-display text-base font-bold text-slate-950">Workflow guardrails</h2>
-            <ul className="mt-3 grid gap-2 text-sm font-medium text-slate-600">
-              <li>Blank source strings are ignored during submission.</li>
-              <li>The submit button locks after a successful send to reduce duplicate jobs.</li>
-              <li>Settings and unfinished drafts are saved only in this browser.</li>
-            </ul>
-              </section>
             </aside>
           </section>
       </section>
@@ -529,6 +547,19 @@ function SummaryRow({ label, value }) {
   );
 }
 
+function HelpTip({ text }) {
+  return (
+    <span
+      className="inline-flex size-4 items-center justify-center rounded-full border border-slate-300 bg-sky-50 text-[10px] font-black leading-none text-sky-700"
+      title={text}
+      aria-label={text}
+      tabIndex={0}
+    >
+      ?
+    </span>
+  );
+}
+
 function StatusBanner({ tone, message }) {
   if (!message) return null;
   const Icon = tone === "success" ? CheckCircle2 : tone === "error" ? XCircle : AlertCircle;
@@ -561,6 +592,10 @@ function getFieldsForSubmission(rows) {
       value: row.value || ""
     }))
     .filter((row) => row.value.trim());
+}
+
+function getDefaultAuthorizeJob(projectId) {
+  return projectId !== "eu";
 }
 
 function buildSubmitStatusMessage(requests) {

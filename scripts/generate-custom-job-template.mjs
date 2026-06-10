@@ -18,8 +18,8 @@ const files = [
   ["xl/workbook.xml", workbookXml()],
   ["xl/_rels/workbook.xml.rels", workbookRelationshipsXml()],
   ["xl/styles.xml", stylesXml()],
-  ["xl/worksheets/sheet1.xml", instructionsSheetXml()],
-  ["xl/worksheets/sheet2.xml", stringsSheetXml()]
+  ["xl/worksheets/sheet1.xml", stringsSheetXml()],
+  ["xl/worksheets/sheet2.xml", instructionsSheetXml()]
 ];
 
 const template = createZip(files);
@@ -81,9 +81,10 @@ function appPropertiesXml() {
 function workbookXml() {
   return xml(
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+      <bookViews><workbookView activeTab="0"/></bookViews>
       <sheets>
-        <sheet name="Instructions" sheetId="1" r:id="rId1"/>
-        <sheet name="Strings" sheetId="2" r:id="rId2"/>
+        <sheet name="Strings" sheetId="1" r:id="rId1"/>
+        <sheet name="Instructions" sheetId="2" r:id="rId2"/>
       </sheets>
     </workbook>`
   );
@@ -158,6 +159,7 @@ function instructionsSheetXml() {
       [2, 5, 24]
     ],
     merges: ["A1:E1", "A3:E3", "B4:E4", "B5:E5", "B6:E6", "B7:E7", "B8:E8", "A10:E10", "B11:E11", "B12:E12"],
+    protectedSheet: true,
     rows
   });
 }
@@ -189,7 +191,7 @@ function stringsSheetXml() {
   });
 }
 
-function worksheetXml({ cols, freezeTopRow = false, merges = [], rows }) {
+function worksheetXml({ cols, freezeTopRow = false, merges = [], protectedSheet = false, rows }) {
   const colXml = cols
     .map(([min, max, width]) => `<col min="${min}" max="${max}" width="${width}" customWidth="1"/>`)
     .join("");
@@ -207,6 +209,7 @@ function worksheetXml({ cols, freezeTopRow = false, merges = [], rows }) {
         .map((range) => `<mergeCell ref="${range}"/>`)
         .join("")}</mergeCells>`
     : "";
+  const protectionXml = protectedSheet ? `<sheetProtection sheet="1" objects="1" scenarios="1"/>` : "";
 
   return xml(
     `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -214,6 +217,7 @@ function worksheetXml({ cols, freezeTopRow = false, merges = [], rows }) {
       <cols>${colXml}</cols>
       <sheetData>${rowXml}</sheetData>
       ${mergeXml}
+      ${protectionXml}
     </worksheet>`
   );
 }

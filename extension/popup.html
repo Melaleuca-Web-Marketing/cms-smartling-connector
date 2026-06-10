@@ -54,7 +54,17 @@
               <input id="customJobPrefix" type="text" spellcheck="false" readonly />
             </div>
             <div>
-              <label for="customJobName">Job name</label>
+              <label for="customJobName">
+                <span class="label-with-help">
+                  Job name
+                  <span
+                    class="help-tip"
+                    tabindex="0"
+                    title="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB."
+                    aria-label="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB."
+                  >?</span>
+                </span>
+              </label>
               <input id="customJobName" type="text" spellcheck="false" />
             </div>
             <div>
@@ -65,7 +75,15 @@
 
           <div class="two-column">
             <label>
-              <span>Project</span>
+              <span class="label-with-help">
+                Project
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  title="Choose the market and source language for this request. US sends to Spanish, Canada sends to French, and EU sends from en-IE to selected languages."
+                  aria-label="Choose the market and source language for this request. US sends to Spanish, Canada sends to French, and EU sends from en-IE to selected languages."
+                >?</span>
+              </span>
               <select id="customProject">
                 <option value="us">US | en-US to Spanish</option>
                 <option value="ca">Canada | en-CA to French</option>
@@ -73,7 +91,15 @@
               </select>
             </label>
             <label>
-              <span>Due date</span>
+              <span class="label-with-help">
+                Due date
+                <span
+                  class="help-tip"
+                  tabindex="0"
+                  title="Requested Smartling due date. The default is 3 business days for US/Canada and 5 business days for EU."
+                  aria-label="Requested Smartling due date. The default is 3 business days for US/Canada and 5 business days for EU."
+                >?</span>
+              </span>
               <input id="customDueDate" type="datetime-local" required />
             </label>
           </div>
@@ -89,7 +115,15 @@
 
           <div class="custom-job-details">
             <label>
-              <span>Additional details</span>
+              <span class="label-with-help">
+                Additional details
+                  <span
+                    class="help-tip"
+                    tabindex="0"
+                    title="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful."
+                    aria-label="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful."
+                  >?</span>
+                </span>
               <textarea
                 id="customJobDescription"
                 rows="3"
@@ -163,7 +197,15 @@
 
           <label class="check-row" for="customAuthorize">
             <input id="customAuthorize" type="checkbox" />
-            <span>Authorize job after submission</span>
+            <span class="label-with-help">
+              Authorize job after submission
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="When checked, the job is submitted into the Smartling workflow immediately. Leave unchecked if the translation team should review the job setup first."
+                aria-label="When checked, the job is submitted into the Smartling workflow immediately. Leave unchecked if the translation team should review the job setup first."
+              >?</span>
+            </span>
           </label>
 
           <div class="section-title">

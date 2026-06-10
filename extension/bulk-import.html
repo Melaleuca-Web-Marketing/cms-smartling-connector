@@ -40,11 +40,27 @@
       <section class="toolbar-card">
         <div class="form-grid">
           <label>
-            <span>Job name</span>
+            <span class="label-with-help">
+              Job name
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB."
+                aria-label="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB."
+              >?</span>
+            </span>
             <input id="bulkJobName" type="text" spellcheck="false">
           </label>
           <label>
-            <span>Project</span>
+            <span class="label-with-help">
+              Project
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="Choose the market and source language for this request. US sends to Spanish, Canada sends to French, and EU sends from en-IE to selected languages."
+                aria-label="Choose the market and source language for this request. US sends to Spanish, Canada sends to French, and EU sends from en-IE to selected languages."
+              >?</span>
+            </span>
             <select id="bulkProject">
               <option value="us">US | en-US to Spanish</option>
               <option value="ca">Canada | en-CA to French</option>
@@ -52,12 +68,28 @@
             </select>
           </label>
           <label>
-            <span>Due date</span>
+            <span class="label-with-help">
+              Due date
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="Requested Smartling due date. The default is 3 business days for US/Canada and 5 business days for EU."
+                aria-label="Requested Smartling due date. The default is 3 business days for US/Canada and 5 business days for EU."
+              >?</span>
+            </span>
             <input id="bulkDueDate" type="datetime-local" required>
           </label>
           <label class="check-row" for="bulkAuthorize">
             <input id="bulkAuthorize" type="checkbox" checked>
-            <span>Authorize job after submission</span>
+            <span class="label-with-help">
+              Authorize job after submission
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="When checked, the job is submitted into the Smartling workflow immediately. Leave unchecked if the translation team should review the job setup first."
+                aria-label="When checked, the job is submitted into the Smartling workflow immediately. Leave unchecked if the translation team should review the job setup first."
+              >?</span>
+            </span>
           </label>
         </div>
 
@@ -72,7 +104,15 @@
 
         <div class="job-details-grid">
           <label>
-            <span>Additional details</span>
+            <span class="label-with-help">
+              Additional details
+              <span
+                class="help-tip"
+                tabindex="0"
+                title="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful."
+                aria-label="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful."
+              >?</span>
+            </span>
             <textarea
               id="bulkJobDescription"
               rows="3"
@@ -142,8 +182,28 @@
             <thead>
               <tr>
                 <th class="row-num">#</th>
-                <th>Custom label</th>
-                <th>Source string</th>
+                <th>
+                  <span class="label-with-help">
+                    Custom label
+                    <span
+                      class="help-tip"
+                      tabindex="0"
+                      title="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label."
+                      aria-label="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label."
+                    >?</span>
+                  </span>
+                </th>
+                <th>
+                  <span class="label-with-help">
+                    Source string
+                    <span
+                      class="help-tip"
+                      tabindex="0"
+                      title="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated."
+                      aria-label="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated."
+                    >?</span>
+                  </span>
+                </th>
                 <th class="row-action">Action</th>
               </tr>
             </thead>

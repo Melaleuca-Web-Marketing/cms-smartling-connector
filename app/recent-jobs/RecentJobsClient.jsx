@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, RefreshCw, RotateCcw, Search, Star } from "lucide-react";
+import { ChevronDown, Copy, RefreshCw, RotateCcw, Search, Star } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSmartlingSettings } from "../lib/clientSettings";
 import { formatDisplayDate } from "../lib/customJobUtils";
@@ -35,6 +35,7 @@ export function RecentJobsClient() {
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [expandedJobIds, setExpandedJobIds] = useState(new Set());
   const [status, setStatus] = useState({ tone: "muted", message: "Loading cached jobs..." });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -129,6 +130,18 @@ export function RecentJobsClient() {
     });
   }
 
+  function toggleExpanded(requestId) {
+    setExpandedJobIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(requestId)) {
+        nextIds.delete(requestId);
+      } else {
+        nextIds.add(requestId);
+      }
+      return nextIds;
+    });
+  }
+
   async function syncJob(requestId) {
     setStatus({ tone: "muted", message: "Refreshing Smartling status..." });
     try {
@@ -158,9 +171,9 @@ export function RecentJobsClient() {
           <label className="field-label">
             Search
             <span className="relative">
-              <Search className="pointer-events-none absolute left-3 top-3 text-slate-400" size={17} />
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
               <input
-                className="field-control w-full pl-9"
+                className="field-control w-full !pl-10 pr-3"
                 value={filters.query}
                 placeholder="Job name, label, locale, Smartling ID"
                 type="search"
@@ -209,8 +222,7 @@ export function RecentJobsClient() {
         <section className="grid min-w-0 content-start gap-5 px-6 py-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-sky-700">Translation dashboard</p>
-              <h1 className="mt-1 font-display text-3xl font-bold text-slate-950">Recent Jobs</h1>
+              <h1 className="font-display text-3xl font-bold text-slate-950">Recent Jobs</h1>
               <p className="mt-1 max-w-3xl text-sm font-medium text-slate-600">
                 Filter, favorite, refresh, and copy translations from submitted Smartling jobs.
               </p>
@@ -236,18 +248,32 @@ export function RecentJobsClient() {
                 </p>
               </div>
             </div>
-            <div className="grid gap-3 p-4">
+            <div className="p-4">
               {jobs.length ? (
-                jobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    isFavorite={favorites.has(job.id)}
-                    onCopy={copyText}
-                    onSync={syncJob}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                ))
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <div className="hidden grid-cols-[minmax(260px,1.7fr)_110px_150px_115px_150px_120px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase text-slate-500 lg:grid">
+                    <span>Job</span>
+                    <span>Status</span>
+                    <span>Route</span>
+                    <span>Fields</span>
+                    <span>Created</span>
+                    <span className="text-right">Actions</span>
+                  </div>
+                  <div className="divide-y divide-slate-200">
+                    {jobs.map((job) => (
+                      <JobRow
+                        key={job.id}
+                        job={job}
+                        isExpanded={expandedJobIds.has(job.id)}
+                        isFavorite={favorites.has(job.id)}
+                        onCopy={copyText}
+                        onSync={syncJob}
+                        onToggleExpanded={toggleExpanded}
+                        onToggleFavorite={toggleFavorite}
+                      />
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="grid min-h-64 place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm font-bold text-slate-500">
                   {isLoading ? "Loading jobs..." : "No jobs match the current filters."}
@@ -268,87 +294,127 @@ export function RecentJobsClient() {
   );
 }
 
-function JobCard({ job, isFavorite, onCopy, onSync, onToggleFavorite }) {
+function JobRow({ job, isExpanded, isFavorite, onCopy, onSync, onToggleExpanded, onToggleFavorite }) {
   const translatedFields = (job.fields || []).filter((field) => String(field.translatedText || "").trim());
   const isReady = READY_STATUS_VALUES.has(job.status);
+  const route = [job.sourceLocale, job.targetLocale].filter(Boolean).join(" to ") || "Unknown";
+  const fieldsSummary = `${job.translatedFieldCount} / ${job.sentFieldCount || job.fieldCount}`;
 
   return (
-    <article className={`rounded-xl border p-4 ${isFavorite ? "border-amber-300 bg-amber-50/40" : "border-slate-200 bg-white"}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`status-pill ${getStatusClass(job.status)}`}>{getStatusLabel(job.status)}</span>
-            <span className="status-pill bg-violet-100 text-violet-800">{job.displayType === "custom" ? "Custom" : "SKU"}</span>
-            {job.targetLocale ? <span className="status-pill status-muted">{job.targetLocale}</span> : null}
-          </div>
-          <h3 className="mt-2 overflow-wrap-anywhere font-display text-base font-bold text-slate-950">{job.jobName || job.id}</h3>
-          <p className="mt-1 text-sm font-medium text-slate-500">{getJobSubtitle(job)}</p>
+    <article className={isFavorite ? "bg-amber-50/40" : "bg-white"}>
+      <div className="grid gap-3 px-4 py-3 transition hover:bg-slate-50 lg:grid-cols-[minmax(260px,1.7fr)_110px_150px_115px_150px_120px] lg:items-center">
+        <button
+          type="button"
+          className="flex min-w-0 items-start gap-3 text-left"
+          aria-expanded={isExpanded}
+          onClick={() => onToggleExpanded(job.id)}
+        >
+          <span className="mt-1 grid size-7 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm">
+            <ChevronDown className={`transition ${isExpanded ? "rotate-180" : ""}`} size={16} />
+          </span>
+          <span className="min-w-0">
+            <span className="flex flex-wrap items-center gap-2 lg:hidden">
+              <span className={`status-pill ${getStatusClass(job.status)}`}>{getStatusLabel(job.status)}</span>
+              <span className="status-pill bg-violet-100 text-violet-800">{job.displayType === "custom" ? "Custom" : "SKU"}</span>
+              {job.targetLocale ? <span className="status-pill status-muted">{job.targetLocale}</span> : null}
+            </span>
+            <span className="mt-1 block truncate font-display text-sm font-bold text-slate-950 lg:mt-0">
+              {job.jobName || job.id}
+            </span>
+            <span className="mt-1 block text-xs font-semibold text-slate-500">{getJobSubtitle(job)}</span>
+          </span>
+        </button>
+
+        <div className="hidden lg:block">
+          <span className={`status-pill ${getStatusClass(job.status)}`}>{getStatusLabel(job.status)}</span>
         </div>
-        <div className="flex gap-2">
+
+        <div className="text-sm font-bold text-slate-700">
+          <span className="lg:hidden text-xs font-extrabold uppercase text-slate-400">Route: </span>
+          {route}
+        </div>
+
+        <div className="text-sm font-bold text-slate-700">
+          <span className="lg:hidden text-xs font-extrabold uppercase text-slate-400">Fields: </span>
+          {fieldsSummary}
+        </div>
+
+        <div className="text-sm font-semibold text-slate-600">
+          <span className="lg:hidden text-xs font-extrabold uppercase text-slate-400">Created: </span>
+          {formatDisplayDate(job.createdAt) || "Unknown"}
+        </div>
+
+        <div className="flex items-center justify-start gap-2 lg:justify-end">
           <button
             type="button"
-            className={`inline-flex size-10 items-center justify-center rounded-lg border transition ${
+            className={`inline-flex size-9 items-center justify-center rounded-lg border transition ${
               isFavorite ? "border-amber-300 bg-amber-100 text-amber-800" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
             }`}
             aria-label={isFavorite ? "Remove favorite" : "Favorite job"}
             onClick={() => onToggleFavorite(job.id)}
           >
-            <Star size={17} fill={isFavorite ? "currentColor" : "none"} />
+            <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
           </button>
           {job.status === "submitted_to_smartling" ? (
-            <button type="button" className="btn-secondary" onClick={() => onSync(job.id)}>
+            <button type="button" className="btn-secondary min-h-9 px-3" onClick={() => onSync(job.id)}>
               Refresh
             </button>
           ) : null}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 text-sm font-semibold text-slate-600 md:grid-cols-4">
-        <Info label="Route" value={[job.sourceLocale, job.targetLocale].filter(Boolean).join(" to ") || "Unknown"} />
-        <Info label="Created" value={formatDisplayDate(job.createdAt) || "Unknown"} />
-        <Info label="Smartling" value={job.smartlingJobUid || "Not submitted"} />
-        <Info label="Fields" value={`${job.translatedFieldCount} of ${job.sentFieldCount || job.fieldCount} ready`} />
-      </div>
-
-      {job.jobDescription ? (
-        <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900">
-          <span className="font-extrabold">Additional details: </span>
-          {job.jobDescription}
-        </div>
-      ) : null}
-
-      {job.import?.message ? (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
-          {job.import.message}
-        </div>
-      ) : null}
-
-      {isReady && translatedFields.length ? (
-        <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-extrabold text-slate-800">
-            View translations ({translatedFields.length})
-          </summary>
-          <div className="grid gap-3 border-t border-slate-200 p-3">
-            <button
-              type="button"
-              className="btn-secondary justify-self-start"
-              onClick={() => onCopy(translatedFields.map((field) => `${field.fieldLabel || field.label || field.fieldKey}: ${field.translatedText}`).join("\n\n"))}
-            >
-              <Copy className="mr-2" size={16} />
-              Copy all
-            </button>
-            {translatedFields.map((field) => (
-              <div key={field.fieldKey} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-2">
-                <TranslationValue label={`${field.fieldLabel || field.label || field.fieldKey} source`} value={field.sourceText} />
-                <TranslationValue
-                  label="Translation"
-                  value={field.translatedText}
-                  action={<button type="button" className="text-xs font-extrabold text-sky-700" onClick={() => onCopy(field.translatedText)}>Copy</button>}
-                />
-              </div>
-            ))}
+      {isExpanded ? (
+        <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-4">
+          <div className="grid gap-2 text-sm font-semibold text-slate-600 md:grid-cols-4">
+            <Info label="Type" value={job.displayType === "custom" ? "Custom" : "SKU"} />
+            <Info label="Target" value={job.targetLocale || "Unknown"} />
+            <Info label="Smartling" value={job.smartlingJobUid || "Not submitted"} />
+            <Info label="Fields" value={`${job.translatedFieldCount} of ${job.sentFieldCount || job.fieldCount} ready`} />
           </div>
-        </details>
+
+          {job.jobDescription ? (
+            <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900">
+              <span className="font-extrabold">Additional details: </span>
+              {job.jobDescription}
+            </div>
+          ) : null}
+
+          {job.import?.message ? (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600">
+              {job.import.message}
+            </div>
+          ) : null}
+
+          {isReady && translatedFields.length ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                <h3 className="font-display text-sm font-bold text-slate-900">
+                  Translations ({translatedFields.length})
+                </h3>
+                <button
+                  type="button"
+                  className="btn-secondary min-h-9"
+                  onClick={() => onCopy(translatedFields.map((field) => `${field.fieldLabel || field.label || field.fieldKey}: ${field.translatedText}`).join("\n\n"))}
+                >
+                  <Copy className="mr-2" size={16} />
+                  Copy all
+                </button>
+              </div>
+              <div className="grid gap-3 p-3">
+                {translatedFields.map((field) => (
+                  <div key={field.fieldKey} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-2">
+                    <TranslationValue label={`${field.fieldLabel || field.label || field.fieldKey} source`} value={field.sourceText} />
+                    <TranslationValue
+                      label="Translation"
+                      value={field.translatedText}
+                      action={<button type="button" className="text-xs font-extrabold text-sky-700" onClick={() => onCopy(field.translatedText)}>Copy</button>}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BriefcaseBusiness, ChevronDown, Settings, UserRound } from "lucide-react";
+import { ChevronDown, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSmartlingSettings } from "../lib/clientSettings";
 
@@ -32,28 +32,32 @@ export function AppShell({ children }) {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex h-16 w-full items-center gap-5 px-5">
           <Link href="/custom-jobs" className="flex min-w-0 items-center gap-3 no-underline">
-            <span className="grid size-10 place-items-center rounded-xl border border-sky-100 bg-sky-50 text-sky-700">
-              <BriefcaseBusiness size={21} strokeWidth={2.2} />
+            <span className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <img
+                className="size-7"
+                src="/cms-smartling/assets/smartling_logo.png"
+                alt=""
+                aria-hidden="true"
+              />
             </span>
             <span className="min-w-0">
               <span className="block font-display text-lg font-bold leading-tight text-slate-950">
                 Smartling Jobs
               </span>
-              <span className="block text-xs font-medium text-slate-500">Translation operations</span>
             </span>
           </Link>
 
-          <nav className="flex flex-1 items-center gap-1" aria-label="Smartling app">
+          <nav className="flex flex-1 items-center gap-2" aria-label="Smartling app">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-lg px-3 py-2 text-sm font-bold no-underline transition ${
+                  className={`inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-extrabold no-underline shadow-sm transition ${
                     isActive
-                      ? "bg-slate-950 text-white"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-800"
                   }`}
                 >
                   {item.label}
@@ -65,14 +69,11 @@ export function AppShell({ children }) {
           <div ref={settingsRef} className="relative">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2 pr-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50"
+              className="flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-800"
               aria-expanded={isSettingsOpen}
               onClick={() => setIsSettingsOpen((value) => !value)}
             >
-              <span className="grid size-8 place-items-center rounded-full bg-slate-100 text-slate-600">
-                <UserRound size={17} />
-              </span>
-              Profile
+              Settings
               <ChevronDown size={15} />
             </button>
             {isSettingsOpen ? <SettingsPanel /> : null}
