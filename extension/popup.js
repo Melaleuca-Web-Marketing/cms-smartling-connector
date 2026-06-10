@@ -293,8 +293,8 @@ function addCustomStringRow(label = "", value = "") {
         <span
           class="help-tip"
           tabindex="0"
-          title="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label. This becomes the translator-facing string label."
-          aria-label="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label. This becomes the translator-facing string label."
+          title="Describe where this string belongs, such as a page heading, button label, image description, or facet label. This becomes the translator-facing string label."
+          aria-label="Describe where this string belongs, such as a page heading, button label, image description, or facet label. This becomes the translator-facing string label."
         >?</span>
       </span>
       <input class="custom-string-label" type="text" placeholder="Custom label" value="${escapeAttribute(label)}">
@@ -305,8 +305,8 @@ function addCustomStringRow(label = "", value = "") {
         <span
           class="help-tip"
           tabindex="0"
-          title="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated."
-          aria-label="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated."
+          title="Enter the exact English text to translate. Include only the source copy that should come back translated."
+          aria-label="Enter the exact English text to translate. Include only the source copy that should come back translated."
         >?</span>
       </span>
       <textarea class="custom-string-value" rows="3" placeholder="Text to translate">${escapeHtml(value)}</textarea>

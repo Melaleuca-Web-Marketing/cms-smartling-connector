@@ -305,7 +305,7 @@ export function CustomJobsClient() {
               <label className="field-label">
                 <span className="inline-flex items-center gap-2">
                   Job name
-                  <HelpTip text="Use a searchable name for the overall request, such as PeakPerformance-CB1-AltText-JB." />
+                  <HelpTip text="Use a searchable name for the overall request, such as the campaign, page, component, or content type." />
                 </span>
                 <input className="field-control" value={jobName} onChange={(event) => { setJobName(event.target.value); markChanged(); }} />
               </label>
@@ -347,7 +347,7 @@ export function CustomJobsClient() {
               <label className="field-label">
                 <span className="inline-flex items-center gap-2">
                   Additional details
-                  <HelpTip text="Optional job-level context for translators. Use this for a component name, page, campaign, design link, or notes. For CB1 alt text, the CB1/page name and a visual reference are helpful." />
+                  <HelpTip text="Optional job-level context for translators. Use this for a component name, page, campaign, design reference link, audience note, or usage guidance." />
                 </span>
                 <textarea
                   className="field-control min-h-28 py-3"
@@ -419,13 +419,13 @@ export function CustomJobsClient() {
                     <th className="w-[34%] px-4 py-3">
                       <span className="inline-flex items-center gap-2">
                         Custom label
-                        <HelpTip text="Describe where this string belongs, such as CB1 image alt text, category heading, or facet label." />
+                        <HelpTip text="Describe where this string belongs, such as a page heading, button label, image description, or facet label." />
                       </span>
                     </th>
                     <th className="px-4 py-3">
                       <span className="inline-flex items-center gap-2">
                         Source string
-                        <HelpTip text="Enter the exact English text to translate. For alt text, enter only the alt text copy that should come back translated." />
+                        <HelpTip text="Enter the exact English text to translate. Include only the source copy that should come back translated." />
                       </span>
                     </th>
                     <th className="w-24 px-4 py-3">Action</th>
