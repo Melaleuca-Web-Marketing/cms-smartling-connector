@@ -648,8 +648,11 @@ function renderPanel(context, fields) {
       </div>
       <div class="${getReviewGridClassName()}">
         <div class="cms-smartling-field-list">
+          <div class="cms-smartling-note">
+            Edit text here to send updated source copy to Smartling. CMS fields are not changed.
+          </div>
           ${fields
-            .map((field) => renderSourceFieldOption(field, panelState.selectedFields))
+            .map((field) => renderSourceFieldOption(field, panelState))
             .join("")}
         </div>
         <div class="${getRecentRequestsClassName()}" id="cms-smartling-recent">
@@ -665,6 +668,7 @@ function renderPanel(context, fields) {
     `;
     body.dataset.requestContext = getRequestContextKey(context);
     body.querySelector("#cms-smartling-submit")?.addEventListener("click", submitSourceFields);
+    wireFieldDraftActions(fields);
     loadRecentRequests(context);
     return;
   }
@@ -713,7 +717,7 @@ async function submitSourceFields() {
     return;
   }
 
-  if (!selectedFields.some((field) => field.control.value.trim())) {
+  if (!selectedFields.some((field) => getFieldDraftValue(field).trim())) {
     setStatus(status, "At least one selected field must have source text.", true);
     return;
   }
@@ -769,7 +773,7 @@ async function submitSourceFields() {
             fields: selectedFields.map((field) => ({
               fieldKey: field.fieldKey,
               fieldLabel: field.fieldLabel,
-              value: field.control.value || ""
+              value: getFieldDraftValue(field)
             }))
           })
         })
@@ -877,16 +881,29 @@ function getSourcePanelState(context, fields) {
   const existingContext = body?.dataset.requestContext;
   const sameContext = existingContext === getRequestContextKey(context);
   const selectedFields = {};
+  const fieldDrafts = {};
+  const editingFields = {};
   const selectedTargetLocales = {};
 
   for (const field of fields) {
     const existingCheck = document.querySelector(
       `.cms-smartling-field-check[data-field-key="${field.fieldKey}"]`
     );
+    const existingDraft = document.querySelector(
+      `.cms-smartling-field-draft[data-field-key="${field.fieldKey}"]`
+    );
+    const existingOption = document.querySelector(
+      `.cms-smartling-field-option[data-field-key="${field.fieldKey}"]`
+    );
+    const draftValue =
+      sameContext && existingDraft ? existingDraft.value : field.control.value || "";
+    fieldDrafts[field.fieldKey] = draftValue;
+    editingFields[field.fieldKey] =
+      sameContext && existingOption?.classList.contains("is-editing");
     selectedFields[field.fieldKey] =
       sameContext && existingCheck
         ? existingCheck.checked
-        : field.selectedByDefault !== false && Boolean(field.control.value.trim());
+        : field.selectedByDefault !== false && Boolean(draftValue.trim());
   }
 
   const routes = context.sourceRoutes?.length ? context.sourceRoutes : [context.route];
@@ -915,6 +932,8 @@ function getSourcePanelState(context, fields) {
       isNorthAmericaPairSupported(context) &&
       document.getElementById("cms-smartling-na-pair")?.checked === true,
     selectedFields,
+    fieldDrafts,
+    editingFields,
     selectedTargetLocales
   };
 }
@@ -964,13 +983,19 @@ function renderNorthAmericaPairOption(context, panelState) {
   `;
 }
 
-function renderSourceFieldOption(field, selectedFields) {
-  const value = field.control.value || "";
+function renderSourceFieldOption(field, panelState) {
+  const value = panelState.fieldDrafts[field.fieldKey] ?? field.control.value ?? "";
+  const cmsValue = field.control.value || "";
   const hasText = Boolean(value.trim());
-  const checked = selectedFields[field.fieldKey] && hasText;
+  const checked = panelState.selectedFields[field.fieldKey] && hasText;
+  const isEditing = panelState.editingFields[field.fieldKey] === true;
+  const rowCount = field.control instanceof HTMLTextAreaElement || value.length > 80 ? 4 : 2;
 
   return `
-    <label class="cms-smartling-field-option">
+    <div
+      class="cms-smartling-field-option ${isEditing ? "is-editing" : ""}"
+      data-field-key="${escapeAttribute(field.fieldKey)}"
+    >
       <input
         class="cms-smartling-field-check"
         type="checkbox"
@@ -978,14 +1003,143 @@ function renderSourceFieldOption(field, selectedFields) {
         ${checked ? "checked" : ""}
         ${hasText ? "" : "disabled"}
       >
-      <span class="cms-smartling-field-copy">
-        <span class="cms-smartling-field-name">${escapeHtml(field.fieldLabel)}</span>
+      <div class="cms-smartling-field-copy">
+        <div class="cms-smartling-field-header">
+          <span class="cms-smartling-field-name">${escapeHtml(field.fieldLabel)}</span>
+          <button
+            type="button"
+            class="cms-smartling-text-button cms-smartling-edit-field"
+            data-field-key="${escapeAttribute(field.fieldKey)}"
+          >Edit text</button>
+        </div>
         <span class="cms-smartling-field-value ${
           hasText ? "" : "cms-smartling-empty"
         }">${escapeHtml(hasText ? value : "Blank; not sent")}</span>
-      </span>
-    </label>
+        <div class="cms-smartling-field-editor">
+          <label class="cms-smartling-label" for="cms-smartling-draft-${escapeAttribute(field.fieldKey)}">
+            Translation source
+          </label>
+          <textarea
+            class="cms-smartling-input cms-smartling-field-draft"
+            id="cms-smartling-draft-${escapeAttribute(field.fieldKey)}"
+            data-field-key="${escapeAttribute(field.fieldKey)}"
+            data-cms-value="${escapeAttribute(cmsValue)}"
+            rows="${rowCount}"
+          >${escapeHtml(value)}</textarea>
+          <div class="cms-smartling-field-editor-actions">
+            <button
+              type="button"
+              class="cms-smartling-secondary cms-smartling-reset-field"
+              data-field-key="${escapeAttribute(field.fieldKey)}"
+            >Reset to CMS value</button>
+            <button
+              type="button"
+              class="cms-smartling-secondary cms-smartling-done-field"
+              data-field-key="${escapeAttribute(field.fieldKey)}"
+            >Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+}
+
+function wireFieldDraftActions(fields) {
+  const fieldsByKey = Object.fromEntries(fields.map((field) => [field.fieldKey, field]));
+
+  for (const option of document.querySelectorAll(".cms-smartling-field-option")) {
+    const fieldKey = option.dataset.fieldKey;
+    const field = fieldsByKey[fieldKey];
+    if (!field) continue;
+
+    option.querySelector(".cms-smartling-edit-field")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setFieldDraftEditing(fieldKey, true);
+    });
+
+    option.querySelector(".cms-smartling-done-field")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      syncFieldDraftPreview(fieldKey);
+      setFieldDraftEditing(fieldKey, false);
+    });
+
+    option.querySelector(".cms-smartling-reset-field")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const draft = getFieldDraftElement(fieldKey);
+      if (draft) {
+        draft.value = field.control.value || "";
+      }
+      syncFieldDraftPreview(fieldKey);
+    });
+
+    option.querySelector(".cms-smartling-field-draft")?.addEventListener("input", () => {
+      syncFieldDraftPreview(fieldKey);
+    });
+
+    option.addEventListener("click", (event) => {
+      if (event.target.closest("button, input, textarea, label")) {
+        return;
+      }
+
+      const checkbox = option.querySelector(".cms-smartling-field-check");
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+      }
+    });
+  }
+}
+
+function setFieldDraftEditing(fieldKey, isEditing) {
+  const option = getFieldOptionElement(fieldKey);
+  if (!option) return;
+
+  option.classList.toggle("is-editing", isEditing);
+  if (isEditing) {
+    option.querySelector(".cms-smartling-field-draft")?.focus();
+  }
+}
+
+function syncFieldDraftPreview(fieldKey) {
+  const option = getFieldOptionElement(fieldKey);
+  const draft = getFieldDraftElement(fieldKey);
+  const preview = option?.querySelector(".cms-smartling-field-value");
+  const checkbox = option?.querySelector(".cms-smartling-field-check");
+  if (!option || !draft || !preview || !checkbox) return;
+
+  const value = draft.value || "";
+  const hasText = Boolean(value.trim());
+  const wasDisabled = checkbox.disabled;
+  preview.textContent = hasText ? value : "Blank; not sent";
+  preview.classList.toggle("cms-smartling-empty", !hasText);
+  checkbox.disabled = !hasText;
+  if (hasText && wasDisabled) {
+    checkbox.checked = true;
+  }
+  if (!hasText) {
+    checkbox.checked = false;
+  }
+}
+
+function getFieldDraftValue(field) {
+  return getFieldDraftElement(field.fieldKey)?.value ?? field.control.value ?? "";
+}
+
+function getFieldDraftElement(fieldKey) {
+  return document.querySelector(`.cms-smartling-field-draft${getFieldKeySelector(fieldKey)}`);
+}
+
+function getFieldOptionElement(fieldKey) {
+  return document.querySelector(`.cms-smartling-field-option${getFieldKeySelector(fieldKey)}`);
+}
+
+function getFieldKeySelector(fieldKey) {
+  const escaped = globalThis.CSS?.escape
+    ? CSS.escape(String(fieldKey))
+    : String(fieldKey).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `[data-field-key="${escaped}"]`;
 }
 
 function renderRecentRequests(context) {

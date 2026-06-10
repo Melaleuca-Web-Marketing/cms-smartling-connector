@@ -1236,11 +1236,24 @@ html.cms-smartling-split-view-active body {
   min-width: 0;
 }
 
+#cms-smartling-panel .cms-smartling-field-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
 #cms-smartling-panel .cms-smartling-field-name {
   color: var(--sl-text);
   font-size: 12px;
   font-weight: 750;
   line-height: 1.25;
+}
+
+#cms-smartling-panel .cms-smartling-edit-field {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 #cms-smartling-panel .cms-smartling-field-value {
@@ -1251,6 +1264,34 @@ html.cms-smartling-split-view-active body {
   line-height: 1.42;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+#cms-smartling-panel .cms-smartling-field-editor {
+  display: none;
+  gap: 7px;
+  margin-top: 3px;
+  padding-top: 9px;
+  border-top: 1px solid var(--sl-border);
+}
+
+#cms-smartling-panel .cms-smartling-field-option.is-editing {
+  cursor: default;
+}
+
+#cms-smartling-panel .cms-smartling-field-option.is-editing .cms-smartling-field-editor {
+  display: grid;
+}
+
+#cms-smartling-panel .cms-smartling-field-draft {
+  min-height: 58px;
+  resize: vertical;
+}
+
+#cms-smartling-panel .cms-smartling-field-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 #cms-smartling-panel .cms-smartling-empty {
