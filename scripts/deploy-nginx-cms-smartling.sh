@@ -11,6 +11,8 @@ DOWNLOADS_SRC_DIR="${DOCS_SRC_DIR}/downloads"
 NGINX_CONF_SRC="${SCRIPT_DIR}/newrequestform.conf"
 NGINX_CONF_DST="/etc/nginx/conf.d/newrequestform.conf"
 RELEASE_INFO_SRC="${DOCS_SRC_DIR}/release-info.json"
+OPTIMIZELY_TRAINING_DIR="${OPTIMIZELY_TRAINING_DIR:-/home/brand/OptimizelyTraining}"
+OPTIMIZELY_TRAINING_PORT="${OPTIMIZELY_TRAINING_PORT:-17820}"
 
 if [[ ${EUID} -ne 0 ]]; then
   exec sudo -- "$0" "$@"
@@ -68,13 +70,17 @@ deploy_nginx_config() {
 
 restart_services() {
   printf 'Restarting PM2 services...\n'
-  su - brand -c "cd '${REPO_DIR}' && pm2 startOrReload ecosystem.config.cjs --update-env"
+  su - brand -c "cd '${REPO_DIR}' && OPTIMIZELY_TRAINING_DIR='${OPTIMIZELY_TRAINING_DIR}' OPTIMIZELY_TRAINING_PORT='${OPTIMIZELY_TRAINING_PORT}' pm2 startOrReload ecosystem.config.cjs --update-env"
 }
+
+printf 'Optimizely Training expected at %s and will run on 127.0.0.1:%s.\n' "${OPTIMIZELY_TRAINING_DIR}" "${OPTIMIZELY_TRAINING_PORT}"
 
 require_file "${DOCS_SRC_DIR}/index.html"
 require_file "${DOCS_SRC_DIR}/styles.css"
 require_file "${DOCS_SRC_DIR}/assets/smartling_logo.png"
 require_file "${NGINX_CONF_SRC}"
+require_file "${OPTIMIZELY_TRAINING_DIR}/training-server.js"
+require_file "${OPTIMIZELY_TRAINING_DIR}/training-site/index.html"
 require_command zip
 require_command npm
 require_command pm2
