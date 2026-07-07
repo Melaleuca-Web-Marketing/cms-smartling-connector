@@ -11,7 +11,7 @@ DOWNLOADS_SRC_DIR="${DOCS_SRC_DIR}/downloads"
 NGINX_CONF_SRC="${SCRIPT_DIR}/newrequestform.conf"
 NGINX_CONF_DST="/etc/nginx/conf.d/newrequestform.conf"
 RELEASE_INFO_SRC="${DOCS_SRC_DIR}/release-info.json"
-OPTIMIZELY_TRAINING_DIR="${OPTIMIZELY_TRAINING_DIR:-/home/brand/OptimizelyTraining}"
+OPTIMIZELY_TRAINING_DIR="${OPTIMIZELY_TRAINING_DIR:-/home/brand/apps/OptimizelyTraining}"
 OPTIMIZELY_TRAINING_PORT="${OPTIMIZELY_TRAINING_PORT:-17820}"
 
 if [[ ${EUID} -ne 0 ]]; then
