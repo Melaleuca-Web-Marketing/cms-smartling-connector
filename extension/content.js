@@ -912,7 +912,9 @@ function getSourcePanelState(context, fields) {
         ? document.getElementById("cms-smartling-due-date").value
         : getDefaultDueDateLocalValue(context),
     authorizeJob:
-      sameContext && document.getElementById("cms-smartling-authorize-job")?.checked === true,
+      sameContext
+        ? document.getElementById("cms-smartling-authorize-job")?.checked === true
+        : getDefaultAuthorizeJob(context),
     northAmericaPair:
       sameContext &&
       isNorthAmericaPairSupported(context) &&
@@ -922,6 +924,11 @@ function getSourcePanelState(context, fields) {
     editingFields,
     selectedTargetLocales
   };
+}
+
+function getDefaultAuthorizeJob(context) {
+  const sourceLocale = context.sourceRoutes?.[0]?.sourceLocale || context.route?.sourceLocale;
+  return ["en-US", "en-CA"].includes(sourceLocale);
 }
 
 function renderTargetLocaleOptions(context, panelState) {
