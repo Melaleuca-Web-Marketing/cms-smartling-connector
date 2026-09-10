@@ -72,6 +72,7 @@ let recentRequestsCollapsed = true;
 let activePanelSku = null;
 let extensionUpdateInfo = null;
 let updateCheckStarted = false;
+let submissionInProgress = false;
 let recentRequestsState = {
   sku: null,
   requests: [],
@@ -668,10 +669,14 @@ function renderPanel(context, fields) {
         Refresh translations
       </button>
       <div class="cms-smartling-status" id="cms-smartling-status">Checking staged translations...</div>
+      <div class="cms-smartling-recent is-expanded" id="cms-smartling-recent">
+        ${renderRecentRequests(context)}
+      </div>
     `;
     body.querySelector("#cms-smartling-refresh")?.addEventListener("click", () => {
       renderTargetTranslations(context, fields);
     });
+    loadRecentRequests(context);
     return;
   }
 
@@ -687,7 +692,7 @@ async function submitSourceFields() {
   const status = document.getElementById("cms-smartling-status");
   const { context, fields } = currentScan || {};
 
-  if (!context || !fields) {
+  if (!context || !fields || submissionInProgress) {
     return;
   }
 
@@ -727,20 +732,27 @@ async function submitSourceFields() {
     }
 
     const duplicateRoutes = getDuplicateSubmittedRoutes(context, selectedRoutes);
-    if (duplicateRoutes.length) {
-      const duplicateSummary = duplicateRoutes
-        .map((route) => `${route.targetCountry} | ${route.targetLocale}`)
-        .join(", ");
-      const proceed = confirm(
-        `This SKU already has submitted Smartling request(s) for: ${duplicateSummary}.\n\nSubmit again anyway?`
-      );
+    const proceed = await confirmSubmissionDetails({
+      context,
+      fields: selectedFields.map((field) => ({ ...field, value: getFieldDraftValue(field) })),
+      jobName,
+      jobDueDate,
+      authorizeJob,
+      routes: selectedRoutes,
+      duplicateRoutes
+    });
 
-      if (!proceed) {
-        setStatus(status, "Submission cancelled. Existing request was left unchanged.");
-        return;
-      }
+    if (!proceed) {
+      setStatus(status, "Submission cancelled. No request was sent.");
+      return;
     }
 
+    submissionInProgress = true;
+    const submitButton = document.getElementById("cms-smartling-submit");
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Submitting...";
+    }
     setStatus(status, "Submitting request...");
 
     const responses = [];
@@ -775,7 +787,47 @@ async function submitSourceFields() {
     await refreshRecentRequests(context, { sync: false });
   } catch (error) {
     setStatus(status, error.message, true);
+  } finally {
+    submissionInProgress = false;
+    const submitButton = document.getElementById("cms-smartling-submit");
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Send to Smartling";
+    }
   }
+}
+
+function confirmSubmissionDetails({ context, fields, jobName, jobDueDate, authorizeJob, routes, duplicateRoutes }) {
+  return new Promise((resolve) => {
+    document.getElementById("cms-smartling-confirmation")?.remove();
+    const duplicateText = duplicateRoutes.length
+      ? `<div class="cms-smartling-confirm-warning">A submitted request already exists for ${escapeHtml(
+          duplicateRoutes.map((route) => route.targetLocale).join(", ")
+        )}. Confirm only if this is intentionally a new request.</div>`
+      : "";
+    const modal = document.createElement("div");
+    modal.id = "cms-smartling-confirmation";
+    modal.className = "cms-smartling-confirmation";
+    modal.innerHTML = `
+      <div class="cms-smartling-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cms-smartling-confirm-title">
+        <h2 id="cms-smartling-confirm-title">Confirm submission details</h2>
+        <div class="cms-smartling-confirm-meta"><strong>SKU:</strong> ${escapeHtml(context.sku)}<br><strong>Job:</strong> ${escapeHtml(jobName || "Default job name")}<br><strong>Due:</strong> ${escapeHtml(formatRequestDate(jobDueDate))}<br><strong>Targets:</strong> ${escapeHtml(routes.map((route) => route.targetLocale).join(", "))}<br><strong>Authorize now:</strong> ${authorizeJob ? "Yes" : "No"}</div>
+        ${duplicateText}
+        <div class="cms-smartling-confirm-fields">${fields.map((field) => `<div><strong>${escapeHtml(field.fieldLabel)}</strong><pre>${escapeHtml(field.value || "")}</pre></div>`).join("")}</div>
+        <div class="cms-smartling-confirm-actions"><button type="button" class="cms-smartling-secondary" data-confirm-cancel>Cancel</button><button type="button" class="cms-smartling-primary" data-confirm-submit>Submit to Smartling</button></div>
+      </div>`;
+    const finish = (confirmed) => {
+      modal.remove();
+      resolve(confirmed);
+    };
+    modal.querySelector("[data-confirm-cancel]").addEventListener("click", () => finish(false));
+    modal.querySelector("[data-confirm-submit]").addEventListener("click", () => finish(true));
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) finish(false);
+    });
+    document.body.appendChild(modal);
+    modal.querySelector("[data-confirm-submit]")?.focus();
+  });
 }
 
 function getSubmitStatusMessage(request) {
@@ -1156,10 +1208,7 @@ function renderRecentRequests(context) {
     `;
   }
 
-  const allRequests = getRelevantRecentRequests(context);
-  const requests = getVisibleRecentRequests(context, allRequests);
-  const displayedRequests = requests.slice(0, getRecentRequestDisplayLimit());
-  const hiddenCount = allRequests.length - displayedRequests.length;
+  const requests = getRelevantRecentRequests(context);
   const count = requests.length;
 
   if (!requests.length) {
@@ -1179,14 +1228,7 @@ function renderRecentRequests(context) {
       recentRequestsCollapsed
         ? ""
         : `<div class="cms-smartling-request-list">
-            ${displayedRequests.map(renderRecentRequestItem).join("")}
-            ${
-              hiddenCount > 0
-                ? `<div class="cms-smartling-recent-empty">${hiddenCount} older request${
-                    hiddenCount === 1 ? "" : "s"
-                  } hidden for this SKU and source culture.</div>`
-                : ""
-            }
+            ${requests.map(renderRecentRequestItem).join("")}
           </div>`
     }
   `;
@@ -1268,6 +1310,7 @@ function renderRecentRequestItem(request) {
           : ""
       }
       ${renderRecentRequestFeedback(request)}
+      ${renderRecentRequestDetails(request)}
       ${renderRecentRequestActions(request)}
     </div>
   `;
@@ -1479,6 +1522,23 @@ function getRelevantRecentRequests(context) {
   return recentRequestsState.requests
     .filter((request) => routeKeys.has(`${request.sourceLocale || ""}|${request.targetLocale || ""}`))
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+function renderRecentRequestDetails(request) {
+  const fields = (request.fields || []).filter((field) => field.sentToSmartling !== false);
+  if (!fields.length) return "";
+
+  const translatedCount = fields.filter((field) => String(field.translatedText || "").trim()).length;
+  return `<details class="cms-smartling-request-details">
+    <summary>View submitted strings${translatedCount ? ` and translations (${translatedCount}/${fields.length})` : ` (${fields.length})`}</summary>
+    <div class="cms-smartling-request-detail-list">
+      ${fields.map((field) => `<div class="cms-smartling-request-detail-row">
+        <strong>${escapeHtml(field.fieldLabel || field.fieldKey)}</strong>
+        <span>Submitted</span><pre>${escapeHtml(field.sourceText || field.value || "")}</pre>
+        <span>Translation</span><pre>${escapeHtml(field.translatedText || "Not received yet.")}</pre>
+      </div>`).join("")}
+    </div>
+  </details>`;
 }
 
 function getRecentRequestRoutes(context) {

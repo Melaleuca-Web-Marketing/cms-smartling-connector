@@ -463,13 +463,10 @@ function latestTranslationsFor(store, sku, targetLocale) {
   );
 }
 
-function attachTranslationsToCustomRequests(store, requests) {
+function attachTranslationsToRequests(store, requests) {
   const translationsByRequest = new Map();
 
   for (const translation of store.translations) {
-    if (translation.requestType !== "custom") {
-      continue;
-    }
     const list = translationsByRequest.get(translation.requestId) || [];
     list.push(translation);
     translationsByRequest.set(translation.requestId, list);
@@ -508,7 +505,7 @@ async function handleListJobs(res, url) {
   const pageRequests = requests.slice(filters.offset, filters.offset + filters.limit);
 
   return sendJson(res, 200, {
-    requests: attachTranslationsToCustomRequests(store, pageRequests),
+    requests: attachTranslationsToRequests(store, pageRequests),
     total,
     limit: filters.limit,
     offset: filters.offset,
@@ -1646,7 +1643,7 @@ async function handleRequest(req, res) {
         .filter((request) => !jobName || String(request.jobName || "").toLowerCase().includes(jobName));
 
       return sendJson(res, 200, {
-        requests: attachTranslationsToCustomRequests(store, requests)
+        requests: attachTranslationsToRequests(store, requests)
           .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
       });
     }
@@ -1659,7 +1656,7 @@ async function handleRequest(req, res) {
         : store.requests
       ).filter((request) => request.requestType !== "custom");
       return sendJson(res, 200, {
-        requests: requests
+        requests: attachTranslationsToRequests(store, requests)
           .slice()
           .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
       });

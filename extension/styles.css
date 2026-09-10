@@ -22,6 +22,7 @@
   color: var(--sl-text);
   font-family: var(--sl-font);
   font-size: 13px;
+  max-height: calc(100vh - 36px);
 }
 
 #cms-smartling-panel[data-theme="dark"] {
@@ -51,6 +52,9 @@
 }
 
 #cms-smartling-panel .cms-smartling-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 36px);
   overflow: hidden;
   border: 1px solid var(--sl-border);
   border-radius: 14px;
@@ -264,12 +268,64 @@
 }
 
 #cms-smartling-panel .cms-smartling-body {
+  min-height: 0;
+  overflow: auto;
   display: grid;
   gap: 12px;
   grid-auto-rows: max-content;
   align-content: start;
   padding: 14px;
 }
+
+#cms-smartling-confirmation {
+  --sl-bg: #ffffff;
+  --sl-surface: #f7fafc;
+  --sl-text: #172033;
+  --sl-muted: #64748b;
+  --sl-border: #d7e1eb;
+  --sl-brand: #0878d7;
+  --sl-shadow: 0 18px 52px rgba(15, 23, 42, 0.24);
+  --sl-font: "Segoe UI", Arial, Helvetica, sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.5);
+  font-family: var(--sl-font);
+}
+
+#cms-smartling-confirmation .cms-smartling-confirm-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border: 1px solid var(--sl-border);
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--sl-bg);
+  color: var(--sl-text);
+  box-shadow: var(--sl-shadow);
+}
+
+#cms-smartling-confirmation h2 { margin: 0; font-size: 17px; }
+#cms-smartling-confirmation .cms-smartling-confirm-meta { color: var(--sl-muted); line-height: 1.55; }
+#cms-smartling-confirmation .cms-smartling-confirm-warning { border: 1px solid #f59e0b; border-radius: 8px; padding: 9px; background: #fffbeb; color: #92400e; font-weight: 700; }
+#cms-smartling-confirmation .cms-smartling-confirm-fields,
+#cms-smartling-panel .cms-smartling-request-detail-list { display: grid; gap: 8px; }
+#cms-smartling-confirmation .cms-smartling-confirm-fields > div,
+#cms-smartling-panel .cms-smartling-request-detail-row { border: 1px solid var(--sl-border); border-radius: 8px; padding: 8px; background: var(--sl-surface); }
+#cms-smartling-confirmation pre,
+#cms-smartling-panel .cms-smartling-request-detail-row pre { margin: 5px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; font: inherit; line-height: 1.35; }
+#cms-smartling-confirmation .cms-smartling-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+#cms-smartling-panel .cms-smartling-request-details { margin-top: 5px; }
+#cms-smartling-panel .cms-smartling-request-details summary { cursor: pointer; color: var(--sl-brand); font-size: 11px; font-weight: 750; }
+#cms-smartling-panel .cms-smartling-request-detail-list { margin-top: 7px; }
+#cms-smartling-panel .cms-smartling-request-detail-row { display: grid; gap: 3px; font-size: 11px; }
+#cms-smartling-panel .cms-smartling-request-detail-row > span { color: var(--sl-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
 
 html.cms-smartling-split-view-active {
   --cms-smartling-split-width: clamp(380px, 34vw, 440px);

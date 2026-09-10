@@ -733,36 +733,31 @@ function getFieldSummary(job) {
 }
 
 function renderCustomTranslations(job) {
-  if (job.displayType !== "custom" || !["translations_available", "published"].includes(job.status)) {
+  const submittedFields = (job.fields || []).filter((field) => field.sentToSmartling !== false);
+  if (!submittedFields.length) {
     return "";
   }
 
-  const translatedFields = (job.fields || []).filter((field) =>
-    String(field.translatedText || "").trim()
-  );
+  const translatedFields = submittedFields.filter((field) => String(field.translatedText || "").trim());
 
-  if (!translatedFields.length) {
-    return "";
-  }
-
-  const count = translatedFields.length;
+  const count = submittedFields.length;
 
   return `
     <details class="translation-review">
       <summary>
-        <span>View translations (${count})</span>
-        <span class="translation-review-hint">Source and translated strings</span>
+        <span>View submitted strings${translatedFields.length ? ` and translations (${count})` : ` (${count})`}</span>
+        <span class="translation-review-hint">Submitted source and translation status</span>
       </summary>
       <div class="translation-review-toolbar">
-        <button
+        ${translatedFields.length ? `<button
           type="button"
           class="secondary-button"
           data-action="copy-all-translations"
           data-request-id="${escapeAttribute(job.id)}"
-        >Copy all translations</button>
+        >Copy all translations</button>` : ""}
       </div>
       <div class="translation-list">
-        ${translatedFields.map((field) => renderTranslationRow(job, field)).join("")}
+        ${submittedFields.map((field) => renderTranslationRow(job, field)).join("")}
       </div>
     </details>
   `;
@@ -775,22 +770,22 @@ function renderTranslationRow(job, field) {
     <section class="translation-row">
       <div class="translation-row-header">
         <h3>${escapeHtml(label)}</h3>
-        <button
+        ${field.translatedText ? `<button
           type="button"
           class="secondary-button translation-copy-button"
           data-action="copy-translation"
           data-request-id="${escapeAttribute(job.id)}"
           data-field-key="${escapeAttribute(field.fieldKey)}"
-        >Copy translation</button>
+        >Copy translation</button>` : ""}
       </div>
       <div class="translation-columns">
         <div class="translation-value">
           <strong>Source</strong>
-          <pre>${escapeHtml(field.sourceText || "")}</pre>
+          <pre>${escapeHtml(field.sourceText || field.value || "")}</pre>
         </div>
         <div class="translation-value is-translated">
           <strong>Translation</strong>
-          <pre>${escapeHtml(field.translatedText || "")}</pre>
+          <pre>${escapeHtml(field.translatedText || "Not received yet.")}</pre>
         </div>
       </div>
     </section>

@@ -385,29 +385,29 @@ function JobRow({ job, isExpanded, isFavorite, onCopy, onSync, onToggleExpanded,
             </div>
           ) : null}
 
-          {isReady && translatedFields.length ? (
+          {job.fields?.length ? (
             <div className="mt-4 rounded-xl border border-slate-200 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                 <h3 className="font-display text-sm font-bold text-slate-900">
-                  Translations ({translatedFields.length})
+                  Submitted strings{translatedFields.length ? ` and translations (${translatedFields.length})` : ""}
                 </h3>
-                <button
+                {translatedFields.length ? <button
                   type="button"
                   className="btn-secondary min-h-9"
                   onClick={() => onCopy(translatedFields.map((field) => `${field.fieldLabel || field.label || field.fieldKey}: ${field.translatedText}`).join("\n\n"))}
                 >
                   <Copy className="mr-2" size={16} />
                   Copy all
-                </button>
+                </button> : null}
               </div>
               <div className="grid gap-3 p-3">
-                {translatedFields.map((field) => (
+                {job.fields.filter((field) => field.sentToSmartling !== false).map((field) => (
                   <div key={field.fieldKey} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-2">
-                    <TranslationValue label={`${field.fieldLabel || field.label || field.fieldKey} source`} value={field.sourceText} />
+                    <TranslationValue label={`${field.fieldLabel || field.label || field.fieldKey} submitted`} value={field.sourceText || field.value || ""} />
                     <TranslationValue
                       label="Translation"
-                      value={field.translatedText}
-                      action={<button type="button" className="text-xs font-extrabold text-sky-700" onClick={() => onCopy(field.translatedText)}>Copy</button>}
+                      value={field.translatedText || "Not received yet."}
+                      action={field.translatedText ? <button type="button" className="text-xs font-extrabold text-sky-700" onClick={() => onCopy(field.translatedText)}>Copy</button> : null}
                     />
                   </div>
                 ))}
