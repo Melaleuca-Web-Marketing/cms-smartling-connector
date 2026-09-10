@@ -646,10 +646,14 @@ html.cms-smartling-split-view-active body {
 #cms-smartling-panel .cms-smartling-disclosure {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 40px;
   min-width: 0;
-  border: 0;
-  padding: 0;
-  background: transparent;
+  border: 1px solid var(--sl-border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--sl-surface);
   color: #0f172a !important;
   cursor: pointer;
   font: inherit;
@@ -658,6 +662,13 @@ html.cms-smartling-split-view-active body {
   opacity: 1 !important;
   text-align: left;
   -webkit-text-fill-color: #0f172a;
+}
+
+#cms-smartling-panel .cms-smartling-disclosure:hover,
+#cms-smartling-panel .cms-smartling-disclosure:focus-visible {
+  border-color: var(--sl-brand);
+  background: var(--sl-brand-soft);
+  outline: none;
 }
 
 #cms-smartling-panel[data-theme="dark"] .cms-smartling-disclosure {

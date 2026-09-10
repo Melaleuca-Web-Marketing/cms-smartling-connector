@@ -95,7 +95,7 @@ async function init() {
   panelCollapsed = true;
   panelTheme = settings.panelTheme;
   panelLayout = settings.panelLayout;
-  recentRequestsCollapsed = settings.recentRequestsCollapsed;
+  recentRequestsCollapsed = true;
   globalThis.chrome?.storage?.onChanged?.addListener(handleExtensionSettingsChanged);
   checkForExtensionUpdates();
   scheduleScan();
@@ -1272,7 +1272,7 @@ function renderRecentRequestsHeader(count, refreshText = "Refresh") {
         aria-expanded="${recentRequestsCollapsed ? "false" : "true"}"
       >
         <span class="cms-smartling-disclosure-icon"></span>
-        <span>Recent requests${countText}</span>
+        <span>${recentRequestsCollapsed ? "Show" : "Hide"} recent requests${countText}</span>
       </button>
       ${
         recentRequestsCollapsed
@@ -1659,9 +1659,13 @@ async function refreshRecentRequests(context, { forceSync = false, sync = true }
     const response = await apiFetch(
       `/api/translation-requests?sku=${encodeURIComponent(context.sku)}`
     );
+    const requests = await attachStagedTranslationsToRecentRequests(
+      context.sku,
+      response.requests || []
+    );
     recentRequestsState = {
       sku: context.sku,
-      requests: response.requests || [],
+      requests,
       loading: false,
       error: null
     };
@@ -1680,6 +1684,42 @@ async function refreshRecentRequests(context, { forceSync = false, sync = true }
     nextRecentElement.innerHTML = renderRecentRequests(context);
     wireRecentRequestActions(context);
   }
+}
+
+async function attachStagedTranslationsToRecentRequests(sku, requests) {
+  const readyRequests = requests.filter((request) =>
+    ["translations_available", "published"].includes(request.status) && request.targetLocale
+  );
+  const locales = [...new Set(readyRequests.map((request) => request.targetLocale))];
+
+  const translationsByLocale = new Map(
+    await Promise.all(
+      locales.map(async (targetLocale) => {
+        try {
+          const response = await apiFetch(
+            `/api/translations?sku=${encodeURIComponent(sku)}&targetLocale=${encodeURIComponent(targetLocale)}`
+          );
+          return [targetLocale, new Map((response.translations || []).map((translation) => [translation.fieldKey, translation]))];
+        } catch {
+          return [targetLocale, new Map()];
+        }
+      })
+    )
+  );
+
+  return requests.map((request) => {
+    if (!["translations_available", "published"].includes(request.status)) {
+      return request;
+    }
+    const translations = translationsByLocale.get(request.targetLocale) || new Map();
+    return {
+      ...request,
+      fields: (request.fields || []).map((field) => ({
+        ...field,
+        translatedText: field.translatedText || translations.get(field.fieldKey)?.translatedText || null
+      }))
+    };
+  });
 }
 
 function wireRecentRequestActions(context) {

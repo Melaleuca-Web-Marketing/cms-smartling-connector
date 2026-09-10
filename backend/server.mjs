@@ -473,12 +473,28 @@ function attachTranslationsToRequests(store, requests) {
   }
 
   return requests.map((request) => {
+    const requestTranslations = translationsByRequest.get(request.id) || [];
     const byField = new Map(
-      (translationsByRequest.get(request.id) || []).map((translation) => [
+      requestTranslations.map((translation) => [
         translation.fieldKey,
         translation
       ])
     );
+
+    // Older staged translations were sometimes stored before a request ID was available.
+    // Use those only as a fallback for a completed request with the same SKU and locale.
+    if (!byField.size && request.requestType !== "custom" && ["translations_available", "published"].includes(request.status)) {
+      for (const translation of store.translations) {
+        if (
+          translation.requestType !== "custom" &&
+          translation.sku === request.sku &&
+          translation.targetLocale === request.targetLocale &&
+          translation.translatedText
+        ) {
+          byField.set(translation.fieldKey, translation);
+        }
+      }
+    }
 
     return {
       ...request,
